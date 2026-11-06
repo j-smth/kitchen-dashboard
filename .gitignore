@@ -1,0 +1,5 @@
+# Only the dashboard page is published (GitHub Pages sites are public).
+# SETUP.md, the spreadsheet and templates mention household names, so they stay on this computer.
+*
+!index.html
+!.gitignore

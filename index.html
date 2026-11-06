@@ -1,0 +1,1395 @@
+<!doctype html>
+<html lang="en-NZ">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kitchen Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400..700&display=swap">
+<style>
+/* ============================================================
+   KITCHEN DASHBOARD — single self-contained file.
+   Edit the CONFIG block in the <script> below; nothing else is
+   required. Designed for a 1920×1080 TV but scales to any size.
+   Theme: Gemini (light by day, Gemini dark from NIGHT_START).
+   ============================================================ */
+:root {
+  --bg: #ffffff;
+  --surface: #f0f4f9;
+  --surface-2: #e9eef6;
+  --ink: #1f1f1f;
+  --ink-2: #444746;
+  --muted: #747775;
+  --line: #dde3ea;
+  --blue: #0b57d0;   --blue-soft: #d3e3fd;
+  --purple: #8142d6; --purple-soft: #eadcff;
+  --pink: #c4466a;   --pink-soft: #fde2e8;
+  --amber: #8c5000;  --amber-soft: #ffe9c2;
+  --gemini: linear-gradient(74deg, #4285f4 0%, #9b72cb 45%, #d96570 100%);
+  --glow-a: rgba(66, 133, 244, 0.10);
+  --glow-b: rgba(155, 114, 203, 0.09);
+  --glow-c: rgba(217, 101, 112, 0.08);
+  --bin-yellow: #fbbc04;
+  --bin-red: #ea4335;
+  --bin-green: #34a853;
+  --font: "Google Sans", "Google Sans Text", Roboto, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius: 1.6rem;
+  --who-col: 8.6rem; /* shared name column, so avatars line up in both panels */
+}
+/* After dark the white screen is too bright for a kitchen — swap to Gemini dark. */
+body.night {
+  --bg: #131314; --surface: #1e1f20; --surface-2: #282a2c; --ink: #e3e3e3; --ink-2: #c4c7c5; --muted: #8e918f;
+  --line: #333537;
+  --blue: #a8c7fa; --blue-soft: #1f3760; --purple: #d0bcff; --purple-soft: #3a2a5c;
+  --pink: #ffb1c1; --pink-soft: #4a2530; --amber: #ffd27a; --amber-soft: #3d2f12;
+  --glow-a: rgba(66, 133, 244, 0.08); --glow-b: rgba(155, 114, 203, 0.07); --glow-c: rgba(217, 101, 112, 0.06);
+  filter: brightness(0.85);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+/* 1rem scales with the screen so the layout looks identical on any TV */
+html { font-size: min(1vw, 1.72vh); }
+body {
+  color: var(--ink);
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(60rem 40rem at 0% 0%, var(--glow-a), transparent 70%),
+    radial-gradient(60rem 40rem at 100% 0%, var(--glow-b), transparent 70%),
+    radial-gradient(70rem 40rem at 50% 110%, var(--glow-c), transparent 70%);
+  font-family: var(--font);
+  line-height: 1.35;
+  height: 100vh;
+  overflow: hidden;
+  transition: background-color 2s, color 2s, filter 2s;
+}
+
+/* Gemini sparkle — a four-point star filled with the Gemini gradient */
+.spark {
+  display: inline-block;
+  width: 1.1em; height: 1.1em;
+  vertical-align: -0.15em;
+  margin-right: 0.45em;
+  background: var(--gemini);
+  clip-path: polygon(50% 0, 58% 34%, 66% 42%, 100% 50%, 66% 58%, 58% 66%, 50% 100%, 42% 66%, 34% 58%, 0 50%, 34% 42%, 42% 34%);
+}
+.grad-text {
+  background: var(--gemini);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.grid {
+  display: grid;
+  height: 100vh;
+  padding: 1.6rem;
+  gap: 1.2rem;
+  /* 6 × 4 cells. Small = 1 cell, medium = 2 wide, large = 2 wide × 2 tall. */
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  position: relative;
+}
+.panel {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 1.2rem 1.6rem;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  display: none; /* shown once the layout places it */
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
+}
+.panel.placed { display: flex; }
+.label {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: var(--ink-2);
+  margin-bottom: 0.6rem;
+}
+
+/* Clock */
+#clock { background: transparent; padding: 0.4rem 0.4rem 0; }
+.time { font-size: 5.6rem; font-weight: 500; line-height: 1.05; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.date { font-size: 1.75rem; font-weight: 400; color: var(--ink-2); margin-top: 0.3rem; }
+.meta-row { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.6rem; white-space: nowrap; overflow: hidden; }
+.sun { font-size: 1.15rem; color: var(--muted); margin-right: 0.4rem; }
+
+/* Weather */
+#weather { }
+.now { display: flex; align-items: center; gap: 1.4rem; }
+.now-icon { font-size: 4.2rem; line-height: 1; }
+.now-temp { font-size: 4.2rem; font-weight: 400; line-height: 1; letter-spacing: -0.02em; }
+.now-desc { font-size: 1.6rem; font-weight: 500; }
+.now-meta { font-size: 1.2rem; color: var(--ink-2); margin-top: 0.3rem; }
+.alert {
+  margin-top: 1rem;
+  padding: 0.7rem 1.1rem;
+  border-radius: 999px;
+  font-size: 1.3rem;
+  font-weight: 500;
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+.alert.warn { background: var(--amber-soft); color: var(--amber); }
+.hours { display: flex; justify-content: space-between; margin-top: 0.7rem; padding-top: 0.6rem; border-top: 1px solid var(--line); }
+.hour { text-align: center; font-size: 1.2rem; font-weight: 500; }
+.hour .h { color: var(--muted); font-weight: 400; }
+.hour .i { font-size: 1.6rem; margin: 0.15rem 0; }
+.hour .p { color: var(--blue); font-size: 1rem; min-height: 1.2em; }
+.days { display: flex; flex-direction: column; gap: 0.3rem; margin-top: auto; padding-top: 0.6rem; }
+.day { display: grid; grid-template-columns: 4.5rem 2.6rem 1fr auto; align-items: center; font-size: 1.4rem; gap: 0.6rem; }
+.day .d { color: var(--ink-2); }
+.day .r { color: var(--blue); font-size: 1.1rem; }
+.day .t { font-weight: 500; font-variant-numeric: tabular-nums; }
+.day .t span { color: var(--muted); font-weight: 400; }
+
+/* Tonight's dinner — the hero, in the Gemini gradient */
+#dinner { background: var(--gemini); color: #ffffff; }
+#dinner .label { color: rgba(255, 255, 255, 0.9); }
+#dinner .spark { background: #ffffff; }
+.meal { font-size: 2.7rem; font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; }
+.cook-row { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 0.9rem; margin-top: 0.5rem; }
+.cook { font-size: 1.45rem; color: rgba(255, 255, 255, 0.9); }
+body.night #dinner { filter: saturate(0.8) brightness(0.8); }
+
+/* Week roster */
+#week { }
+.roster { display: flex; flex-direction: column; gap: 0.15rem; }
+.row {
+  display: grid;
+  grid-template-columns: 3.4rem 1fr var(--who-col);
+  gap: 0.7rem;
+  align-items: baseline;
+  padding: 0.3rem 0.9rem;
+  border-radius: 999px;
+  font-size: 1.35rem;
+}
+.row .d { color: var(--muted); font-weight: 500; }
+.row .c { color: var(--ink-2); font-size: 1.15rem; white-space: nowrap; }
+.row > div:nth-child(2) { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row.today { background: var(--blue-soft); }
+.row.today .d, .row.today .c { color: var(--blue); }
+.row.today div:nth-child(2) { font-weight: 500; }
+.row.past { opacity: 0.4; }
+
+/* Groceries */
+#grocery { }
+.glist { list-style: none; columns: 1; column-gap: 2rem; flex: 1; min-height: 0; overflow: hidden; }
+.glist.two { columns: 2; }
+.glist li {
+  font-size: 1.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--line);
+  break-inside: avoid;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+.glist li .q { color: var(--muted); }
+.count-badge {
+  float: right;
+  font-size: 1rem;
+  background: var(--purple-soft);
+  color: var(--purple);
+  border-radius: 999px;
+  padding: 0.15rem 0.8rem;
+}
+.count-badge:empty { display: none; }
+
+/* Bins */
+#bins { justify-content: center; }
+.bins-body { display: flex; flex-direction: row; align-items: center; gap: 1.4rem; }
+#bins.urgent { background: var(--amber-soft); box-shadow: inset 0 0 0 0.2rem var(--bin-yellow); }
+.bin-dots { display: flex; gap: 0.6rem; }
+.bin-dot { width: 3.4rem; height: 4.2rem; border-radius: 0.5rem 0.5rem 0.8rem 0.8rem; position: relative; }
+.bin-dot::before { content: ""; position: absolute; left: -0.25rem; right: -0.25rem; top: -0.5rem; height: 0.7rem; border-radius: 0.35rem; background: inherit; filter: brightness(0.85); }
+.bin-text .big { font-size: 1.8rem; font-weight: 500; }
+.bin-text .small { font-size: 1.2rem; color: var(--ink-2); margin-top: 0.2rem; }
+
+/* Notes */
+#notes { }
+.notes { list-style: none; }
+.notes li { font-size: 1.4rem; padding: 0.3rem 0; }
+.notes li::before { content: ""; display: inline-block; width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--gemini); margin-right: 0.8rem; vertical-align: middle; }
+.notes li.empty::before { display: none; }
+
+/* Countdowns — pills under the date */
+.cd { display: flex; gap: 0.5rem; }
+.cd .pill { background: var(--surface); border-radius: 999px; padding: 0.25rem 0.8rem; font-size: 1.05rem; color: var(--ink-2); }
+.cd .pill b { color: var(--pink); font-weight: 500; margin-left: 0.3rem; font-variant-numeric: tabular-nums; }
+
+/* Chores */
+#chores { }
+.chores { display: flex; flex-direction: column; gap: 0.15rem; }
+/* Same right inset as the dinner rows' padding, so avatars line up with the column above */
+.chores > div { display: grid; grid-template-columns: 1fr var(--who-col); align-items: center; padding-right: 0.9rem; font-size: 1.35rem; }
+.who { display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 500; }
+.av {
+  display: inline-grid; place-items: center;
+  width: 1.9rem; height: 1.9rem; border-radius: 50%;
+  color: #ffffff; font-size: 1rem; font-weight: 700;
+}
+.row .c .av { width: 1.5rem; height: 1.5rem; font-size: 0.8rem; }
+.row .c .who { gap: 0.4rem; }
+.label .sub { float: right; color: var(--muted); font-weight: 400; font-size: 1rem; }
+
+/* QR tiles — small tiles for phones to scan */
+.tile-qr { align-items: center; justify-content: center; padding: 1rem; }
+.qr { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; min-width: 0; text-align: center; }
+.qr .code { width: 7.6rem; height: 7.6rem; flex: none; background: #ffffff; border-radius: 0.8rem; padding: 0.45rem; }
+.qr-none { display: none; }
+#qrwifi.no-wifi .qr-none { display: block; text-align: center; }
+.qr .code svg { display: block; width: 100%; height: 100%; }
+.qr .t { font-size: 1.15rem; font-weight: 500; line-height: 1.2; }
+.qr .s { font-size: 1rem; color: var(--muted); margin-top: 0.2rem; overflow-wrap: anywhere; }
+.qr.off { display: none; }
+
+/* Dinner headcount */
+.headcount { display: inline-block; background: rgba(255, 255, 255, 0.2); border-radius: 999px; padding: 0.25rem 0.9rem; font-size: 1.25rem; }
+.headcount:empty { display: none; }
+
+/* Washing-line score */
+.wash { display: flex; align-items: center; gap: 0.9rem; margin-top: 0.7rem; padding: 0.4rem 1.1rem; border-radius: 999px; background: var(--surface-2); font-size: 1.25rem; }
+.wash .w-text { flex: 1; min-width: 0; }
+.wash .w-text span { color: var(--muted); }
+.meter { display: flex; gap: 0.2rem; flex: none; }
+.meter i { width: 0.55rem; height: 1.2rem; border-radius: 0.2rem; background: var(--line); }
+.meter i.on { background: var(--gemini); background-size: 6rem 100%; }
+
+/* Coming up tile */
+.cd-list { display: flex; flex-direction: column; gap: 0.3rem; }
+.cd-list div { display: flex; justify-content: space-between; gap: 1rem; font-size: 1.35rem; }
+.cd-list b { color: var(--pink); font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
+body.has-count .meta-row .cd { display: none; }
+
+/* Washing line tile */
+.wash-big { display: flex; align-items: center; gap: 1.2rem; }
+.wash-score { font-size: 3.6rem; font-weight: 500; line-height: 1; }
+.wash-score small { font-size: 1.4rem; color: var(--muted); font-weight: 400; }
+.wash-label { font-size: 1.6rem; font-weight: 500; }
+.wash-note { font-size: 1.15rem; color: var(--muted); margin-top: 0.2rem; }
+.meter.big { margin-top: auto; padding-top: 0.8rem; width: 100%; }
+.meter.big i { flex: 1; width: auto; height: 1.3rem; }
+body.has-wash #weather .wash { display: none; }
+
+/* ---- Size variants: each tile adapts to small / medium / large ---- */
+#clock[data-size="S"] .time { font-size: 3.8rem; }
+#clock[data-size="S"] .date { font-size: 1.25rem; }
+#clock[data-size="S"] .meta-row { display: none; }
+#weather[data-size="M"] .hours, #weather[data-size="M"] .days, #weather[data-size="M"] .wash { display: none; }
+#dinner[data-size="S"] .meal { font-size: 1.8rem; }
+#dinner[data-size="S"] .cook { font-size: 1.1rem; }
+#dinner[data-size="S"] .headcount { font-size: 0.95rem; padding: 0.15rem 0.7rem; }
+#grocery[data-size="M"] .glist { columns: 2; }
+#grocery[data-size="M"] .glist li { font-size: 1.25rem; padding: 0.25rem 0; }
+#bins[data-size="S"] .bins-body { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
+#bins[data-size="S"] .bin-dot { width: 2.2rem; height: 2.6rem; }
+#bins[data-size="S"] .bin-text .big { font-size: 1.3rem; }
+#bins[data-size="S"] .bin-text .small { font-size: 1rem; }
+#chores[data-size="S"] .chores > div { grid-template-columns: 1fr auto; padding-right: 0; font-size: 1.1rem; }
+#chores[data-size="S"] .who .nm { display: none; }
+#notes[data-size="S"] .notes li { font-size: 1.1rem; }
+#notes[data-size="L"] .notes li { font-size: 1.7rem; padding: 0.5rem 0; }
+#count[data-size="S"] .cd-list div { font-size: 1.05rem; flex-direction: column; gap: 0; }
+#count[data-size="S"] .cd-list div:nth-child(n+3), #count[data-size="M"] .cd-list div:nth-child(n+5) { display: none; }
+#wash[data-size="S"] .wash-big { flex-direction: column; align-items: flex-start; gap: 0.4rem; }
+#wash[data-size="S"] .wash-score { font-size: 2.8rem; }
+#wash[data-size="S"] .wash-label { font-size: 1.2rem; }
+#wash[data-size="S"] .wash-note { display: none; }
+
+/* ---- Edit mode (mouse only; the TV never shows any of this) ---- */
+.guide { display: none; border: 2px dashed var(--line); border-radius: var(--radius); z-index: 0; }
+body.editing .guide { display: block; }
+body.editing .panel.placed { outline: 2px dashed var(--blue); outline-offset: -2px; cursor: grab; user-select: none; }
+body.editing #clock { background: var(--surface-2); }
+.panel.dragging { z-index: 20; opacity: 0.85; cursor: grabbing; box-shadow: 0 1.2rem 3rem rgba(0,0,0,0.25); transition: none; }
+.ghost { display: none; z-index: 2; border-radius: var(--radius); border: 3px solid var(--blue); background: color-mix(in srgb, var(--blue) 12%, transparent); pointer-events: none; }
+.ghost.on { display: block; }
+.ghost.bad { border-color: #d93025; background: rgba(217, 48, 37, 0.12); }
+.tile-tools {
+  display: none; position: absolute; left: 0.6rem; right: 0.6rem; top: 0.6rem; z-index: 5;
+  align-items: center; gap: 0.4rem; padding: 0.35rem 0.5rem 0.35rem 0.9rem;
+  background: var(--bg); border-radius: 999px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  font-size: 1rem; color: var(--ink); cursor: default;
+}
+body.editing .panel.placed .tile-tools { display: flex; }
+.tt-name { flex: 1; min-width: 0; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile-tools button, .edit-bar button, .add-menu button, .dialog button, .draft-note button {
+  font: inherit; border: 0; cursor: pointer; border-radius: 999px; background: var(--surface-2); color: var(--ink);
+}
+.tile-tools button { width: 2rem; height: 2rem; font-weight: 600; font-size: 0.95rem; }
+.tile-tools button.on { background: var(--blue); color: #ffffff; }
+.tile-tools button:disabled { opacity: 0.3; cursor: default; }
+.tile-tools .tt-x { background: transparent; font-size: 1.4rem; }
+.tt-dims { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 0.3rem; }
+.rh { display: none; position: absolute; z-index: 6; }
+body.editing .panel.placed .rh { display: block; }
+.rh::after { content: ""; position: absolute; background: var(--blue); border-radius: 999px; opacity: 0.55; transition: opacity 0.15s; }
+.rh:hover::after, .panel.resizing .rh::after { opacity: 1; }
+.rh-e, .rh-w { top: 3.6rem; bottom: 1.6rem; width: 1.4rem; cursor: ew-resize; }
+.rh-e { right: 0; } .rh-w { left: 0; }
+.rh-e::after, .rh-w::after { top: 50%; left: 50%; width: 0.4rem; height: 3.2rem; transform: translate(-50%, -50%); }
+.rh-n, .rh-s { left: 1.6rem; right: 2.4rem; height: 1.4rem; cursor: ns-resize; }
+.rh-n { top: 3.2rem; } .rh-s { bottom: 0; }
+.rh-n::after, .rh-s::after { top: 50%; left: 50%; width: 3.2rem; height: 0.4rem; transform: translate(-50%, -50%); }
+.rh-se { right: 0; bottom: 0; width: 2.2rem; height: 2.2rem; cursor: nwse-resize; }
+.rh-se::after { right: 0.5rem; bottom: 0.5rem; width: 1rem; height: 1rem; background: transparent; border-right: 0.35rem solid var(--blue); border-bottom: 0.35rem solid var(--blue); border-radius: 0 0 0.4rem 0; }
+.panel.resizing { z-index: 20; }
+.edit-btn {
+  position: fixed; left: 1.6rem; bottom: 0.4rem; z-index: 30; font: inherit; font-size: 0.95rem;
+  border: 0; border-radius: 999px; padding: 0.35rem 1rem; background: var(--surface-2); color: var(--ink-2);
+  cursor: pointer; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+}
+.edit-btn.show { opacity: 1; pointer-events: auto; }
+body.editing .edit-btn { display: none; }
+.edit-bar {
+  position: fixed; left: 50%; bottom: 0.6rem; transform: translateX(-50%); z-index: 30;
+  display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.6rem 0.5rem 1.4rem;
+  background: var(--bg); border-radius: 999px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); font-size: 1.1rem;
+}
+.edit-bar[hidden], .add-menu[hidden], .dialog[hidden], .draft-note[hidden] { display: none; }
+.edit-bar button { padding: 0.5rem 1.1rem; }
+.edit-bar .primary, .dialog .primary { background: var(--blue); color: #ffffff; }
+.eb-title { font-weight: 500; margin-right: 0.4rem; }
+.eb-add { position: relative; }
+.add-menu {
+  position: absolute; bottom: calc(100% + 0.5rem); left: 0; min-width: 22rem; z-index: 31;
+  background: var(--bg); border-radius: 1.2rem; box-shadow: 0 4px 20px rgba(0,0,0,0.2); padding: 0.6rem;
+}
+.add-menu .am-row { display: flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.5rem; }
+.add-menu .am-row span { flex: 1; }
+.add-menu .am-row button { width: 2.2rem; height: 2.2rem; font-weight: 600; }
+.add-menu .am-row button:disabled { opacity: 0.3; cursor: default; }
+.add-menu .empty { padding: 0.5rem; font-size: 1.05rem; }
+.toast {
+  position: fixed; left: 50%; bottom: 2.5rem; transform: translateX(-50%); z-index: 40;
+  background: var(--ink); color: var(--bg); border-radius: 999px; padding: 0.6rem 1.4rem; font-size: 1.1rem;
+  opacity: 0; transition: opacity 0.3s; pointer-events: none;
+}
+.toast.show { opacity: 1; }
+.dialog {
+  position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(0,0,0,0.35);
+}
+.dialog-box { background: var(--bg); color: var(--ink); border-radius: 1.6rem; padding: 2rem; width: min(48rem, 92vw); font-size: 1.15rem; }
+.dialog-box h2 { font-size: 1.6rem; font-weight: 500; margin-bottom: 0.8rem; }
+.dialog-box ol { margin: 0.8rem 0 1rem 1.4rem; display: grid; gap: 0.3rem; }
+.dialog-box textarea { width: 100%; height: 6rem; font: 0.95rem/1.4 ui-monospace, Menlo, monospace; padding: 0.8rem; border-radius: 0.8rem; border: 1px solid var(--line); background: var(--surface); color: var(--ink); resize: none; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 1rem; }
+.dialog-actions button { padding: 0.6rem 1.3rem; }
+.draft-note {
+  position: fixed; left: 50%; bottom: 0.3rem; transform: translateX(-50%); z-index: 30;
+  font-size: 0.95rem; color: var(--ink-2); background: var(--amber-soft); border-radius: 999px; padding: 0.25rem 0.5rem 0.25rem 1rem;
+}
+.draft-note button { padding: 0.15rem 0.8rem; margin-left: 0.4rem; }
+
+.empty { color: var(--muted); font-size: 1.3rem; }
+#status { position: fixed; right: 1.6rem; bottom: 0.35rem; font-size: 0.85rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="grid">
+  <section class="panel" id="clock">
+    <div class="time grad-text" id="time">--:--</div>
+    <div class="date" id="date"></div>
+    <div class="meta-row"><span class="sun" id="sun"></span><span class="cd" id="clist"></span></div>
+  </section>
+
+  <section class="panel" id="weather">
+    <div class="label">West Melton weather</div>
+    <div id="weather-body"><div class="empty">Loading weather…</div></div>
+  </section>
+
+  <section class="panel" id="dinner">
+    <div class="label"><span class="spark"></span>Tonight's dinner</div>
+    <div class="meal" id="meal">—</div>
+    <div class="cook-row"><span class="cook" id="cook"></span><span class="headcount" id="headcount"></span></div>
+  </section>
+
+  <section class="panel" id="week">
+    <div class="label">This week's dinners</div>
+    <div class="roster" id="roster"></div>
+  </section>
+
+  <section class="panel" id="grocery">
+    <div class="label">Grocery list <span class="count-badge" id="gcount"></span></div>
+    <ul class="glist" id="glist"></ul>
+  </section>
+
+  <section class="panel tile-qr" id="qrgrocery">
+    <div class="qr" id="qr-grocery"><div class="code"></div><div><div class="t">Add to list</div><div class="s">Scan with phone</div></div></div>
+  </section>
+
+  <section class="panel tile-qr" id="qrwifi">
+    <div class="qr" id="qr-wifi"><div class="code"></div><div><div class="t">Guest Wi-Fi</div><div class="s" id="wifi-name"></div></div></div>
+    <div class="empty qr-none">Add WifiName to the Settings tab</div>
+  </section>
+
+  <section class="panel" id="bins"><div class="bins-body" id="bins-body"></div></section>
+
+  <section class="panel" id="chores">
+    <div class="label">Today's jobs</div>
+    <div class="chores" id="chlist"><div class="empty">No jobs set for today</div></div>
+  </section>
+
+  <section class="panel" id="notes">
+    <div class="label">Notes</div>
+    <ul class="notes" id="nlist"></ul>
+  </section>
+
+  <section class="panel" id="count">
+    <div class="label">Coming up</div>
+    <div class="cd-list" id="count-list"></div>
+  </section>
+
+  <section class="panel" id="wash">
+    <div class="label">Washing line</div>
+    <div id="wash-body"><div class="empty">Waiting for the weather…</div></div>
+  </section>
+
+  <div class="ghost" id="ghost"></div>
+</div>
+<div id="status"></div>
+
+<!-- Layout editor: appears only when a mouse moves over the page -->
+<button class="edit-btn" id="edit-btn" type="button">✎ Edit layout</button>
+<div class="edit-bar" id="edit-bar" hidden>
+  <span class="eb-title">Drag to move · drag edges to resize</span>
+  <div class="eb-add">
+    <button type="button" id="add-btn">+ Add tile</button>
+    <div class="add-menu" id="add-menu" hidden></div>
+  </div>
+  <button type="button" id="reset-btn">Reset</button>
+  <button type="button" id="done-btn" class="primary">Done</button>
+</div>
+<div class="draft-note" id="draft-note" hidden>New layout is only on this computer<button type="button" id="draft-show">Show code</button></div>
+<div class="dialog" id="save-dialog" hidden>
+  <div class="dialog-box">
+    <h2>Send this layout to the TV</h2>
+    <p>The TV reads its layout from your Google Sheet. To update it:</p>
+    <ol>
+      <li>Copy the layout code below.</li>
+      <li>Open the Sheet's <b>Settings</b> tab and find the row with <b>Layout</b> in the Key column (add it if it's missing).</li>
+      <li>Paste the code into its <b>Value</b> cell. The TV switches within 2 minutes.</li>
+    </ol>
+    <textarea id="layout-code" readonly></textarea>
+    <div class="dialog-actions">
+      <button type="button" id="dialog-close">Close</button>
+      <button type="button" id="copy-code" class="primary">Copy code</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+/* ============================================================
+   CONFIG — the only part you normally need to edit.
+   ============================================================ */
+const CONFIG = {
+  // Google Sheet ID. Deliberately NOT stored here, because this file is public on GitHub:
+  // open the page as  …/index.html?sheet=YOUR_SHEET_ID  (the long code in the Sheet's URL
+  // between /d/ and /edit). Without it the dashboard shows demo data.
+  SHEET_ID: "",
+
+  // Tab names in the Google Sheet (must match exactly).
+  TABS: {
+    groceries: "Groceries", week: "Week", notes: "Notes", countdowns: "Countdowns",
+    dinner: "Dinner", settings: "Settings",
+  },
+
+  // Each person's colour, in the same order as "People" in the Settings tab.
+  PERSON_COLOURS: ["#1a73e8", "#d93025", "#e37400", "#188038", "#8142d6", "#c4466a"],
+
+  // West Melton, Selwyn District.
+  LOCATION: { name: "West Melton", lat: -43.517, lon: 172.367, tz: "Pacific/Auckland" },
+
+  // Bins: "anchor" is ANY date your bin was (or will be) collected.
+  // The dashboard repeats it every "everyDays" days.
+  // ⚠️ Check one real "Week 2" Wednesday on the Selwyn council calendar and put it here.
+  BINS: [
+    { name: "Recycling", color: "var(--bin-yellow)", anchor: "2026-10-28", everyDays: 14 },
+    { name: "Rubbish",   color: "var(--bin-red)",    anchor: "2026-10-28", everyDays: 14 },
+  ],
+  BIN_REMIND_FROM_HOUR: 16, // the evening before, highlight from 4pm
+
+  // Dim the screen between these hours (24h). Set both to 0 to disable.
+  NIGHT_START: 22,
+  NIGHT_END: 6,
+
+  // Refresh intervals (minutes).
+  SHEET_REFRESH_MIN: 2,
+  WEATHER_REFRESH_MIN: 15,
+};
+
+// Take the Sheet ID from the address (?sheet=…) and remember it in this browser, so the TV keeps
+// working even if the bookmark loses the ?sheet= part.
+(function () {
+  const fromUrl = new URLSearchParams(location.search).get("sheet");
+  let saved = "";
+  try {
+    if (fromUrl) localStorage.setItem("kitchen-dashboard-sheet", fromUrl);
+    saved = localStorage.getItem("kitchen-dashboard-sheet") || "";
+  } catch (e) {}
+  CONFIG.SHEET_ID = (fromUrl || saved || CONFIG.SHEET_ID).trim();
+})();
+
+/* ============================================================
+   Demo data (used only when SHEET_ID is empty)
+   ============================================================ */
+const DEMO = {
+  groceries: [
+    { Item: "Milk", Qty: "2L", Done: "" }, { Item: "Bread", Qty: "", Done: "" },
+    { Item: "Eggs", Qty: "dozen", Done: "" }, { Item: "Bananas", Qty: "", Done: "" },
+    { Item: "Chicken thighs", Qty: "1kg", Done: "" }, { Item: "Rice", Qty: "", Done: "" },
+    { Item: "Cheese", Qty: "", Done: "" }, { Item: "Dish tabs", Qty: "", Done: "" },
+    { Item: "Already bought", Qty: "", Done: "TRUE" },
+  ],
+  // The household chart: Day, Meal, Cook, then any number of job columns.
+  week: [
+    { Day: "Mon", Meal: "Chicken stir fry",    Cook: "C",   "Set Table & Empty": "C", Wash: "J", "Clear & Dry": "M" },
+    { Day: "Tue", Meal: "Tacos",               Cook: "S",   "Set Table & Empty": "S", Wash: "M", "Clear & Dry": "C" },
+    { Day: "Wed", Meal: "Spaghetti bolognese", Cook: "J",   "Set Table & Empty": "J", Wash: "S", "Clear & Dry": "C" },
+    { Day: "Thu", Meal: "Sausages & mash",     Cook: "M",   "Set Table & Empty": "M", Wash: "S", "Clear & Dry": "J" },
+    { Day: "Fri", Meal: "Homemade pizza",      Cook: "All", "Set Table & Empty": "C", Wash: "S", "Clear & Dry": "J" },
+    { Day: "Sat", Meal: "BBQ",                 Cook: "S",   "Set Table & Empty": "J", Wash: "M", "Clear & Dry": "C" },
+    { Day: "Sun", Meal: "Roast lamb",          Cook: "S",   "Set Table & Empty": "C", Wash: "M", "Clear & Dry": "J" },
+  ],
+  notes: [
+    { Note: "Plumber Thursday 10am", Until: "" },
+    { Note: "Library books due Friday", Until: "" },
+  ],
+  dinner: [
+    { Person: "Sam", Mon: "TRUE", Tue: "TRUE", Wed: "TRUE", Thu: "TRUE", Fri: "TRUE", Sat: "TRUE", Sun: "TRUE" },
+    { Person: "Max",   Mon: "TRUE", Tue: "TRUE", Wed: "TRUE", Thu: "TRUE", Fri: "TRUE", Sat: "TRUE", Sun: "TRUE" },
+    { Person: "Jo", Mon: "TRUE", Tue: "TRUE", Wed: "TRUE", Thu: "TRUE", Fri: "TRUE", Sat: "TRUE", Sun: "TRUE" },
+    { Person: "Cam", Mon: "TRUE", Tue: "TRUE", Wed: "TRUE", Thu: "TRUE", Fri: "TRUE", Sat: "TRUE", Sun: "TRUE" },
+  ],
+  settings: [
+    { Key: "People", Value: "Sam, Max, Jo, Cam" },
+    { Key: "WifiName", Value: "Demo Guest" },
+    { Key: "WifiPassword", Value: "demo-password" },
+  ],
+  countdowns: [
+    { Event: "Labour Day", Date: "2026-10-26" },
+    { Event: "Christmas", Date: "2026-12-25" },
+    { Event: "Canterbury Anniversary", Date: "2026-11-13" },
+  ],
+};
+
+/* ============================================================
+   Helpers
+   ============================================================ */
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const ROSTER_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+// Current wall-clock time in the configured timezone, as a plain Date whose
+// local fields match NZ time (so it works even if the TV's timezone is wrong).
+function nzNow() {
+  const parts = new Intl.DateTimeFormat("en-NZ", {
+    timeZone: CONFIG.LOCATION.tz, year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+  }).formatToParts(new Date()).reduce((o, p) => (o[p.type] = p.value, o), {});
+  return new Date(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+}
+const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+function parseDate(s) {
+  const m = String(s || "").trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})|^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (!m) return null;
+  return m[1] ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(+m[6], +m[5] - 1, +m[4]); // ISO or NZ d/m/yyyy
+}
+const daysBetween = (a, b) => Math.round((startOfDay(b) - startOfDay(a)) / 86400000);
+const fmtDay = (d) => d.toLocaleDateString("en-NZ", { weekday: "short", day: "numeric", month: "short" });
+
+// Minimal CSV parser (handles quotes, commas and newlines inside quotes).
+function parseCSV(text) {
+  const rows = []; let row = [], cell = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+      else if (c === '"') q = false;
+      else cell += c;
+    } else if (c === '"') q = true;
+    else if (c === ",") { row.push(cell); cell = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(cell); rows.push(row); row = []; cell = "";
+    } else cell += c;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  const [head, ...body] = rows;
+  if (!head) return [];
+  const keys = head.map((h) => h.trim());
+  return body
+    .map((r) => Object.fromEntries(keys.map((k, i) => [k, (r[i] ?? "").trim()])))
+    .filter((o) => Object.values(o).some((v) => v));
+}
+
+async function fetchTab(tab) {
+  const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}&_=${Date.now()}`;
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error(`${tab}: HTTP ${res.status}`);
+  return parseCSV(await res.text());
+}
+
+/* ============================================================
+   Clock, night dimming, bins (update every 15s)
+   ============================================================ */
+function renderClock() {
+  const n = nzNow();
+  $("time").textContent = `${n.getHours() % 12 || 12}:${String(n.getMinutes()).padStart(2, "0")}`;
+  $("date").textContent = n.toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long" });
+  const h = n.getHours();
+  const { NIGHT_START: s, NIGHT_END: e } = CONFIG;
+  const night = s !== e && (s > e ? (h >= s || h < e) : (h >= s && h < e));
+  document.body.classList.toggle("night", night);
+}
+
+function nextCollection(bin, today) {
+  const anchor = parseDate(bin.anchor);
+  const diff = daysBetween(anchor, today);
+  const mod = ((diff % bin.everyDays) + bin.everyDays) % bin.everyDays;
+  const add = mod === 0 ? 0 : bin.everyDays - mod;
+  const d = new Date(today); d.setDate(d.getDate() + add);
+  return d;
+}
+
+function renderBins() {
+  const now = nzNow(), today = startOfDay(now);
+  // If today's collection has passed (after midday), look from tomorrow.
+  const from = now.getHours() >= 12 ? new Date(today.getTime() + 86400000) : today;
+  const upcoming = CONFIG.BINS.map((b) => ({ ...b, next: nextCollection(b, from) }));
+  const soonest = Math.min(...upcoming.map((b) => b.next.getTime()));
+  const due = upcoming.filter((b) => b.next.getTime() === soonest);
+  const days = daysBetween(today, new Date(soonest));
+  const names = due.map((b) => b.name).join(" + ");
+
+  let big, small, urgent = false;
+  if (days === 0) { big = `${names} — today`; small = "Make sure they're out by 7am"; urgent = true; }
+  else if (days === 1) {
+    big = `${names} — tomorrow`;
+    small = `Put out tonight · ${fmtDay(new Date(soonest))}`;
+    urgent = now.getHours() >= CONFIG.BIN_REMIND_FROM_HOUR;
+  } else { big = `${names} in ${days} days`; small = fmtDay(new Date(soonest)); }
+
+  $("bins").classList.toggle("urgent", urgent);
+  $("bins-body").innerHTML = `
+    <div class="bin-dots">${due.map((b) => `<div class="bin-dot" style="background:${b.color}"></div>`).join("")}</div>
+    <div class="bin-text"><div class="label" style="margin:0 0 .3rem">Bin day</div>
+      <div class="big">${esc(big)}</div><div class="small">${esc(small)}</div></div>`;
+}
+
+/* ============================================================
+   Weather (Open-Meteo — free, no key)
+   ============================================================ */
+const WMO = {
+  0: ["☀️", "Clear"], 1: ["🌤️", "Mostly clear"], 2: ["⛅", "Partly cloudy"], 3: ["☁️", "Overcast"],
+  45: ["🌁", "Fog"], 48: ["🌁", "Freezing fog"],
+  51: ["🌦️", "Light drizzle"], 53: ["🌦️", "Drizzle"], 55: ["🌧️", "Heavy drizzle"],
+  56: ["🌧️", "Freezing drizzle"], 57: ["🌧️", "Freezing drizzle"],
+  61: ["🌦️", "Light rain"], 63: ["🌧️", "Rain"], 65: ["🌧️", "Heavy rain"],
+  66: ["🌧️", "Freezing rain"], 67: ["🌧️", "Freezing rain"],
+  71: ["🌨️", "Light snow"], 73: ["🌨️", "Snow"], 75: ["❄️", "Heavy snow"], 77: ["🌨️", "Snow grains"],
+  80: ["🌦️", "Showers"], 81: ["🌧️", "Showers"], 82: ["⛈️", "Violent showers"],
+  85: ["🌨️", "Snow showers"], 86: ["🌨️", "Snow showers"],
+  95: ["⛈️", "Thunderstorm"], 96: ["⛈️", "Thunderstorm, hail"], 99: ["⛈️", "Thunderstorm, hail"],
+};
+const nightIcon = (code, isDay) => (!isDay && code <= 2 ? "🌙" : (WMO[code] || ["❔"])[0]);
+const compass = (deg) => ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][Math.round(deg / 45) % 8];
+// Open-Meteo returns local NZ times without an offset; read the fields directly.
+const isoHour = (iso) => +iso.slice(11, 13);
+const hm = (iso) => { const h = isoHour(iso); return `${h % 12 || 12}:${iso.slice(14, 16)}${h < 12 ? "am" : "pm"}`; };
+const ampm = (h) => (h % 12 || 12) + (h < 12 ? "am" : "pm");
+
+async function loadWeather() {
+  const { lat, lon, tz } = CONFIG.LOCATION;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&timezone=${encodeURIComponent(tz)}`
+    + `&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,is_day`
+    + `&hourly=temperature_2m,precipitation_probability,weather_code,is_day,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,cloud_cover`
+    + `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max`
+    + `&forecast_days=4`;
+  try {
+    const w = await (await fetch(url, { cache: "no-store" })).json();
+    renderWeather(w);
+    setStatus("weather", true);
+  } catch (e) { setStatus("weather", false); }
+}
+
+function renderWeather(w) {
+  const c = w.current;
+  const wash = washData(w);
+  renderWashTile(wash);
+  const [, desc] = WMO[c.weather_code] || ["", "—"];
+  const d = w.daily;
+
+  // Next 6 hours from the current hour.
+  const nowKey = c.time.slice(0, 13);
+  let start = w.hourly.time.findIndex((t) => t.slice(0, 13) === nowKey);
+  if (start < 0) start = 0;
+  const hours = [];
+  for (let i = start + 1; i <= start + 6 && i < w.hourly.time.length; i++) hours.push(i);
+
+  // Rain alert: first hour in the next 6 with ≥50% chance.
+  const rainIdx = hours.find((i) => w.hourly.precipitation_probability[i] >= 50);
+  // Wind alert: Canterbury nor'westers.
+  const gust = Math.round(c.wind_gusts_10m);
+  let alert = "";
+  if (rainIdx !== undefined) alert = `<div class="alert">☔ Rain likely from ${ampm(isoHour(w.hourly.time[rainIdx]))} — bring the washing in</div>`;
+  else if (gust >= 60) alert = `<div class="alert warn">💨 Strong ${compass(c.wind_direction_10m)} gusts to ${gust} km/h</div>`;
+  else if (d.uv_index_max[0] >= 8) alert = `<div class="alert warn">🧴 UV very high today (${Math.round(d.uv_index_max[0])}) — slip, slop, slap</div>`;
+
+  $("weather-body").innerHTML = `
+    <div class="now">
+      <div class="now-icon">${nightIcon(c.weather_code, c.is_day)}</div>
+      <div>
+        <div class="now-temp">${Math.round(c.temperature_2m)}°</div>
+      </div>
+      <div>
+        <div class="now-desc">${esc(desc)}</div>
+        <div class="now-meta">Feels ${Math.round(c.apparent_temperature)}° · ${compass(c.wind_direction_10m)} ${Math.round(c.wind_speed_10m)} km/h</div>
+        <div class="now-meta">Today ${Math.round(d.temperature_2m_max[0])}° / ${Math.round(d.temperature_2m_min[0])}°</div>
+      </div>
+    </div>
+    ${alert}
+    ${washRow(wash)}
+    <div class="hours">${hours.map((i) => `
+      <div class="hour">
+        <div class="h">${ampm(isoHour(w.hourly.time[i]))}</div>
+        <div class="i">${nightIcon(w.hourly.weather_code[i], w.hourly.is_day[i])}</div>
+        <div>${Math.round(w.hourly.temperature_2m[i])}°</div>
+        <div class="p">${w.hourly.precipitation_probability[i] >= 20 ? w.hourly.precipitation_probability[i] + "%" : ""}</div>
+      </div>`).join("")}
+    </div>
+    <div class="days">${[1, 2].map((i) => {
+      const dt = parseDate(d.time[i]);
+      return `<div class="day">
+        <div class="d">${DAYS[dt.getDay()]}</div>
+        <div>${(WMO[d.weather_code[i]] || ["❔"])[0]}</div>
+        <div class="r">${d.precipitation_probability_max[i] >= 20 ? "💧 " + d.precipitation_probability_max[i] + "%" : ""}</div>
+        <div class="t">${Math.round(d.temperature_2m_max[i])}° <span>/ ${Math.round(d.temperature_2m_min[i])}°</span></div>
+      </div>`;
+    }).join("")}</div>`;
+
+  $("sun").textContent = `☀ ${hm(d.sunrise[0])}  ·  🌙 ${hm(d.sunset[0])}`;
+  if (lastCountdowns) renderCountdowns(lastCountdowns); // sunrise text changes the row width
+}
+
+/* Washing-line score: 0–10 for drying between 9am and 5pm.
+   Looks at the rest of today, or tomorrow once it's after 3pm. */
+function washData(w) {
+  const h = w.hourly, now = w.current.time;
+  const today = now.slice(0, 10);
+  const nowHour = isoHour(now);
+  const tomorrow = nowHour >= 15;
+  const day = tomorrow ? w.daily.time[1] : today;
+  const from = tomorrow ? 9 : Math.max(9, nowHour);
+  const idx = h.time.map((t, i) => i).filter((i) => h.time[i].startsWith(day) && isoHour(h.time[i]) >= from && isoHour(h.time[i]) < 17);
+  if (!idx.length) return null;
+  const avg = (k) => idx.reduce((a, i) => a + h[k][i], 0) / idx.length;
+  const max = (k) => Math.max(...idx.map((i) => h[k][i]));
+  const T = avg("temperature_2m"), RH = avg("relative_humidity_2m"), W = avg("wind_speed_10m");
+  const cloud = avg("cloud_cover"), rain = max("precipitation_probability"), gust = max("wind_gusts_10m");
+
+  let score = 5, label, note = "";
+  score += T >= 20 ? 2 : T >= 15 ? 1 : T < 6 ? -2 : T < 10 ? -1 : 0;
+  score += RH < 55 ? 2 : RH < 70 ? 1 : RH > 85 ? -2 : 0;
+  score += W >= 10 && W <= 35 ? 2 : W >= 5 ? 1 : 0;
+  score += cloud < 30 ? 1 : cloud > 80 ? -1 : 0;
+  if (rain >= 30) { score -= 2; note = "chance of showers"; }
+  score = Math.max(0, Math.min(10, Math.round(score)));
+  if (rain >= 60) { score = 1; note = "rain likely"; }
+  if (!note && gust >= 55) note = "strong gusts, peg it well";
+
+  label = score >= 8 ? "Great drying day" : score >= 6 ? "Good drying" : score >= 4 ? "OK, slow drying" : "Don't bother";
+  return { score, label, note, tomorrow };
+}
+
+const meterHtml = (score, cls = "") => `<div class="meter ${cls}">${Array.from({ length: 10 }, (_, i) => `<i class="${i < score ? "on" : ""}"></i>`).join("")}</div>`;
+
+// Compact row inside the Weather tile (hidden when the Washing line tile is on screen).
+function washRow(d) {
+  if (!d) return "";
+  return `<div class="wash"><div>👕</div>
+    <div class="w-text">${d.tomorrow ? "Tomorrow" : "Washing line"}: ${d.label}${d.note ? ` <span>· ${d.note}</span>` : ""}</div>
+    ${meterHtml(d.score)}</div>`;
+}
+
+function renderWashTile(d) {
+  $("wash-body").innerHTML = d
+    ? `<div class="wash-big"><div class="wash-score">${d.score}<small>/10</small></div>
+        <div><div class="wash-label">${d.label}</div>
+        <div class="wash-note">${d.tomorrow ? "Tomorrow" : "Today"}, 9am–5pm${d.note ? ` · ${d.note}` : ""}</div></div></div>
+       ${meterHtml(d.score, "big")}`
+    : `<div class="empty">No drying forecast</div>`;
+}
+
+/* ============================================================
+   Sheet-driven panels
+   ============================================================ */
+const isDone = (v) => /^(true|yes|y|x|✓|done)$/i.test(String(v || "").trim());
+
+function renderGroceries(rows) {
+  const items = rows.filter((r) => r.Item && !isDone(r.Done));
+  const ul = $("glist");
+  ul.classList.toggle("two", items.length > 9);
+  ul.innerHTML = items.length
+    ? items.map((r) => `<li><span>${esc(r.Item)}</span><span class="q">${esc(r.Qty)}</span></li>`).join("")
+    : `<li class="empty">Nothing on the list 🎉</li>`;
+  $("gcount").textContent = items.length ? `${items.length} item${items.length === 1 ? "" : "s"}` : "";
+}
+
+// People come from the Settings tab (e.g. "People": Sam, Max, Jo, Cam).
+// The chart can use full names or just initials; "All" means everyone.
+let PEOPLE = [];
+function resolvePeople(value) {
+  return String(value || "").split(/[,/&+]| and /i).map((t) => t.trim()).filter(Boolean).map((t) => {
+    if (/^(all|everyone)$/i.test(t)) return { name: "Everyone", all: true };
+    const i = PEOPLE.findIndex((p) => p.toLowerCase() === t.toLowerCase() || (t.length <= 2 && p[0].toLowerCase() === t[0].toLowerCase()));
+    return i >= 0 ? { name: PEOPLE[i], colour: CONFIG.PERSON_COLOURS[i % CONFIG.PERSON_COLOURS.length] } : { name: t };
+  });
+}
+const plainNames = (value) => resolvePeople(value).map((p) => p.name).join(" & ");
+function whoHtml(value) {
+  return resolvePeople(value).map((p) => {
+    const av = p.all ? `<span class="av" style="background:var(--gemini)">✦</span>`
+      : `<span class="av" style="background:${p.colour || "var(--muted)"}">${esc(p.name[0])}</span>`;
+    return `<span class="who">${av}<span class="nm">${esc(p.name)}</span></span>`;
+  }).join(" ");
+}
+
+const dayKey = (v) => String(v || "").trim().slice(0, 3).toLowerCase().replace(/^./, (c) => c.toUpperCase());
+const NOT_JOBS = ["day", "meal", "cook"];
+
+function renderWeek(rows) {
+  const today = DAYS[nzNow().getDay()];
+  const byDay = Object.fromEntries(rows.map((r) => [dayKey(r.Day), r]));
+  const t = byDay[today] || {};
+
+  // Tonight's dinner card
+  $("meal").textContent = t.Meal || "Not planned yet";
+  const cooks = resolvePeople(t.Cook);
+  $("cook").textContent = !cooks.length ? ""
+    : cooks.some((c) => c.all) ? "👩‍🍳 Everyone's cooking"
+    : `👩‍🍳 ${plainNames(t.Cook)} ${cooks.length > 1 ? "are" : "is"} cooking`;
+
+  // Week roster
+  const todayIdx = ROSTER_ORDER.indexOf(today);
+  $("roster").innerHTML = ROSTER_ORDER.map((d, i) => {
+    const r = byDay[d] || {};
+    const cls = i === todayIdx ? "today" : i < todayIdx ? "past" : "";
+    return `<div class="row ${cls}"><div class="d">${d}</div><div>${esc(r.Meal || "—")}</div><div class="c">${whoHtml(r.Cook)}</div></div>`;
+  }).join("");
+
+  // Today's jobs: every column that isn't Day, Meal or Cook
+  const jobs = Object.keys(t).filter((k) => !NOT_JOBS.includes(k.toLowerCase()) && t[k]);
+  $("chlist").innerHTML = jobs.length
+    ? jobs.slice(0, 5).map((k) => `<div><span>${esc(k)}</span>${whoHtml(t[k])}</div>`).join("")
+    : `<div class="empty">No jobs set for today</div>`;
+}
+
+function renderNotes(rows) {
+  const today = startOfDay(nzNow());
+  const live = rows.filter((r) => r.Note && (!parseDate(r.Until) || parseDate(r.Until) >= today));
+  $("nlist").innerHTML = live.length
+    ? live.slice(0, 5).map((r) => `<li>${esc(r.Note)}</li>`).join("")
+    : `<li class="empty">No notes</li>`;
+}
+
+let lastCountdowns = null;
+function renderCountdowns(rows) {
+  lastCountdowns = rows;
+  const today = startOfDay(nzNow());
+  const list = rows
+    .map((r) => ({ name: r.Event, date: parseDate(r.Date) }))
+    .filter((r) => r.name && r.date && r.date >= today)
+    .sort((a, b) => a.date - b.date)
+    .slice(0, 6);
+  const when = (d) => { const n = daysBetween(today, d); return n === 0 ? "today!" : n === 1 ? "tomorrow" : n + " days"; };
+  $("clist").innerHTML = list.slice(0, 3).map((r) => `<span class="pill">${esc(r.name)}<b>${when(r.date)}</b></span>`).join("");
+  $("count-list").innerHTML = list.length
+    ? list.map((r) => `<div><span>${esc(r.name)}</span><b>${when(r.date)}</b></div>`).join("")
+    : `<div class="empty">Nothing coming up</div>`;
+  fitPills();
+}
+
+// Drop countdown pills from the end until the row fits on one line.
+function fitPills() {
+  const row = document.querySelector(".meta-row"), pills = $("clist");
+  while (pills.children.length > 1 && row.scrollWidth > row.clientWidth + 1) pills.lastElementChild.remove();
+}
+
+// Dinner: one row per person, a ticked box per weekday means "home for dinner".
+function renderHeadcount(rows) {
+  const today = DAYS[nzNow().getDay()];
+  const people = rows.filter((r) => r.Person);
+  if (!people.length) { $("headcount").textContent = ""; return; }
+  const out = people.filter((r) => !isDone(r[today])).map((r) => r.Person);
+  const home = people.length - out.length;
+  $("headcount").textContent = `🍽 ${home} home for dinner` + (out.length ? ` · ${out.join(", ")} out` : "");
+}
+
+// QR codes drawn as crisp SVG from the qrcode-generator library.
+function qrSvg(text) {
+  if (typeof qrcode !== "function") return "";
+  const qr = qrcode(0, "M");
+  qr.addData(text);
+  qr.make();
+  const n = qr.getModuleCount();
+  let d = "";
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) d += `M${c} ${r}h1v1h-1z`;
+  return `<svg viewBox="-1 -1 ${n + 2} ${n + 2}" shape-rendering="crispEdges"><path d="${d}" fill="#1f1f1f"/></svg>`;
+}
+
+// Settings tab: Key / Value pairs (People, WifiName, WifiPassword, WifiSecurity, GroceryLink, Layout).
+function renderSettings(rows) {
+  const set = Object.fromEntries(rows.map((r) => [String(r.Key || "").trim().toLowerCase(), String(r.Value || "").trim()]));
+  PEOPLE = (set.people || "").split(",").map((n) => n.trim()).filter(Boolean);
+  const sheetLink = CONFIG.SHEET_ID ? `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/edit` : "https://docs.google.com/spreadsheets/";
+  const groceryLink = set.grocerylink || sheetLink;
+  $("qr-grocery").querySelector(".code").innerHTML = qrSvg(groceryLink);
+
+  const ssid = set.wifiname, pass = set.wifipassword || "";
+  const wifiEl = $("qr-wifi");
+  wifiEl.classList.toggle("off", !ssid);
+  $("qrwifi").classList.toggle("no-wifi", !ssid);
+  if (ssid) {
+    const e = (v) => v.replace(/([\\;,:"])/g, "\\$1");
+    const type = pass ? (set.wifisecurity || "WPA") : "nopass";
+    wifiEl.querySelector(".code").innerHTML = qrSvg(`WIFI:T:${type};S:${e(ssid)};P:${e(pass)};;`);
+    $("wifi-name").textContent = ssid;
+  }
+  setSheetLayout(set.layout || "");
+}
+
+async function loadSheet() {
+  if (!CONFIG.SHEET_ID) {
+    renderSettings(DEMO.settings); // first: it sets PEOPLE for the week chart
+    renderGroceries(DEMO.groceries); renderWeek(DEMO.week);
+    renderNotes(DEMO.notes); renderCountdowns(DEMO.countdowns); renderHeadcount(DEMO.dinner);
+    setStatus("sheet", "demo");
+    return;
+  }
+  const T = CONFIG.TABS;
+  const jobs = [
+    [T.settings, renderSettings], // first: it sets PEOPLE for the week chart
+    [T.groceries, renderGroceries], [T.week, renderWeek],
+    [T.notes, renderNotes], [T.countdowns, renderCountdowns], [T.dinner, renderHeadcount],
+  ];
+  const results = await Promise.allSettled(jobs.map(([tab]) => fetchTab(tab)));
+  results.forEach((r, i) => { if (r.status === "fulfilled") jobs[i][1](r.value); });
+  setStatus("sheet", results.every((r) => r.status === "fulfilled"));
+}
+
+/* ============================================================
+   Tile layout: a 6 × 4 grid of cells. Every tile is a whole number
+   of cells wide and tall (S = 1×1, M = 2×1 and L = 2×2 are presets).
+   A layout is a list of "tile:WxH:column:row" (0-based), e.g.
+   "clock:2x1:0:0 dinner:2x1:2:0 …". The TV reads it from the Sheet's
+   Settings tab (Key "Layout"); edit it with a mouse via ✎ Edit layout.
+   ============================================================ */
+const COLS = 6, ROWS = 4;
+const SIZES = { S: [1, 1], M: [2, 1], L: [2, 2] };
+// min = the smallest footprint [width, height] the tile's content still fits in.
+const TILES = {
+  clock:     { name: "Clock & date",        min: [1, 1] },
+  dinner:    { name: "Tonight's dinner",    min: [1, 1] },
+  weather:   { name: "Weather",             min: [2, 1] },
+  week:      { name: "This week's dinners", min: [2, 2] },
+  grocery:   { name: "Grocery list",        min: [2, 1] },
+  qrgrocery: { name: "Add-to-list QR",      min: [1, 1] },
+  qrwifi:    { name: "Guest Wi-Fi QR",      min: [1, 1] },
+  bins:      { name: "Bin day",             min: [1, 1] },
+  chores:    { name: "Today's jobs",        min: [1, 1] },
+  notes:     { name: "Notes",               min: [1, 1] },
+  count:     { name: "Coming up",           min: [1, 1] },
+  wash:      { name: "Washing line",        min: [1, 1] },
+};
+const DEFAULT_LAYOUT = "clock:M:0:0 dinner:M:2:0 qrgrocery:S:4:0 qrwifi:S:5:0 weather:L:0:1 week:L:2:1 grocery:L:4:1 bins:M:0:3 chores:M:2:3 notes:M:4:3";
+const DRAFT_KEY = "kitchen-dashboard-layout";
+
+const box = (t) => ({ x: t.x, y: t.y, w: t.w, h: t.h });
+const overlaps = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+const inside = (a) => a.x >= 0 && a.y >= 0 && a.x + a.w <= COLS && a.y + a.h <= ROWS;
+const fits = (layout) => layout.every((t, i) => inside(box(t)) && layout.every((o, j) => j <= i || !overlaps(box(t), box(o))));
+const bigEnough = (id, w, h) => w >= TILES[id].min[0] && h >= TILES[id].min[1];
+const layoutCode = (layout) => layout.map((t) => `${t.id}:${t.w}x${t.h}:${t.x}:${t.y}`).join(" ");
+// Which content variant a tile uses: one cell wide → small, one row tall → medium, otherwise large.
+const sizeClass = (t) => (t.w === 1 ? "S" : t.h === 1 ? "M" : "L");
+
+// Unknown tiles, too-small sizes, off-grid or overlapping entries are skipped rather than breaking the screen.
+function parseLayout(code) {
+  const out = [];
+  for (const part of String(code || "").trim().split(/[\s,;]+/)) {
+    const [id, size, x, y] = part.split(":");
+    if (!TILES[id]) continue;
+    const preset = SIZES[String(size || "").toUpperCase()];
+    const m = String(size || "").match(/^(\d+)x(\d+)$/i);
+    const [w, h] = preset || (m ? [+m[1], +m[2]] : [0, 0]);
+    const t = { id, w, h, x: +x, y: +y };
+    if (!bigEnough(id, w, h) || !Number.isInteger(t.x) || !Number.isInteger(t.y)) continue;
+    if (out.some((o) => o.id === id) || !fits([...out, t])) continue;
+    out.push(t);
+  }
+  return out;
+}
+
+const store = {
+  get() { try { return localStorage.getItem(DRAFT_KEY) || ""; } catch (e) { return ""; } },
+  set(v) { try { v ? localStorage.setItem(DRAFT_KEY, v) : localStorage.removeItem(DRAFT_KEY); } catch (e) {} },
+};
+
+let sheetLayout = "";          // what the Sheet says (what the TV shows)
+let layout = parseLayout(store.get() || DEFAULT_LAYOUT);
+let editing = false;
+
+function placeEl(t) {
+  const el = $(t.id);
+  el.style.gridColumn = `${t.x + 1} / span ${t.w}`;
+  el.style.gridRow = `${t.y + 1} / span ${t.h}`;
+  el.dataset.size = sizeClass(t);
+}
+
+function applyLayout() {
+  for (const id of Object.keys(TILES)) {
+    const el = $(id), t = layout.find((i) => i.id === id);
+    el.classList.toggle("placed", !!t);
+    if (!t) continue;
+    placeEl(t);
+    el.querySelectorAll(".tt-size").forEach((btn) => {
+      const [w, h] = SIZES[btn.dataset.size];
+      btn.classList.toggle("on", t.w === w && t.h === h);
+    });
+    el.querySelector(".tt-dims").textContent = `${t.w}×${t.h}`;
+  }
+  document.body.classList.toggle("has-wash", layout.some((t) => t.id === "wash"));
+  document.body.classList.toggle("has-count", layout.some((t) => t.id === "count"));
+  if (lastCountdowns) renderCountdowns(lastCountdowns); // pills depend on the clock tile's width
+  updateDraftNote();
+}
+
+// Called whenever the Sheet's Settings tab loads.
+function setSheetLayout(code) {
+  sheetLayout = layoutCode(parseLayout(code || DEFAULT_LAYOUT));
+  const draft = store.get();
+  if (draft && draft === sheetLayout) store.set(""); // the Sheet has caught up with this computer
+  if (!editing) { layout = parseLayout(store.get() || sheetLayout); applyLayout(); }
+}
+
+function updateDraftNote() {
+  const draft = store.get();
+  $("draft-note").hidden = editing || !draft || draft === sheetLayout;
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+}
+
+// First free spot for a w×h tile, scanning left-to-right, top-to-bottom.
+function freeSpot(list, w, h, skipId) {
+  for (let y = 0; y + h <= ROWS; y++) for (let x = 0; x + w <= COLS; x++) {
+    const b = { x, y, w, h };
+    if (list.every((o) => o.id === skipId || !overlaps(b, box(o)))) return { x, y };
+  }
+  return null;
+}
+
+// Move a tile; if it lands exactly on other tiles, they swap into the space it left.
+function tryMove(id, nx, ny) {
+  const t = layout.find((i) => i.id === id);
+  if (t.x === nx && t.y === ny) return null;
+  const target = { ...box(t), x: nx, y: ny };
+  if (!inside(target)) return null;
+  const others = layout.filter((o) => o.id !== id);
+  const hit = others.filter((o) => overlaps(box(o), target));
+  const dx = t.x - nx, dy = t.y - ny;
+  if (hit.some((o) => { const b = box(o); return b.x < nx || b.y < ny || b.x + b.w > nx + target.w || b.y + b.h > ny + target.h; })) return null;
+  const next = layout.map((o) => o.id === id ? { ...o, x: nx, y: ny } : hit.includes(o) ? { ...o, x: o.x + dx, y: o.y + dy } : o);
+  return fits(next) ? next : null;
+}
+
+// Put a tile at a new position and/or size. Tiles in the way shuffle over to the nearest
+// space that fits, nudging their neighbours along if needed (up to a few tiles).
+const MAX_BUMPS = 6;
+function tryPlace(id, rect) {
+  const me = layout.find((i) => i.id === id);
+  if (me.x === rect.x && me.y === rect.y && me.w === rect.w && me.h === rect.h) return null;
+  if (!inside(rect) || !bigEnough(id, rect.w, rect.h)) return null;
+  const moved = { ...me, ...rect };
+  const others = layout.filter((o) => o.id !== id);
+  const hit = others.filter((o) => overlaps(box(o), rect));
+  if (!hit.length) return layout.map((o) => (o.id === id ? moved : o));
+
+  const cx = rect.x + rect.w / 2, cy = rect.y + rect.h / 2;
+  // Nearest spots first; on ties, prefer staying in the same row and moving away from the placed tile.
+  const candidates = (t) => {
+    const out = [];
+    const tx = t.x + t.w / 2 - cx, ty = t.y + t.h / 2 - cy;
+    for (let y = 0; y + t.h <= ROWS; y++) for (let x = 0; x + t.w <= COLS; x++) {
+      const dx = x - t.x, dy = y - t.y;
+      out.push({ x, y, cost: Math.abs(dx) + Math.abs(dy) + (dy ? 0.5 : 0) - (dx * tx + dy * ty > 0 ? 0.25 : 0) });
+    }
+    return out.sort((a, b) => a.cost - b.cost);
+  };
+
+  let budget = 20000; // keeps dragging smooth (≈15ms worst case) even on a full screen
+  function solve(placed, pending, locked, bumps) {
+    if (!pending.length) return placed;
+    if (--budget < 0) return null;
+    const [t, ...rest] = pending;
+    for (const c of candidates(t)) {
+      const b = { ...box(t), x: c.x, y: c.y };
+      const over = placed.filter((o) => overlaps(box(o), b));
+      if (over.some((o) => locked.has(o.id)) || bumps + over.length > MAX_BUMPS) continue;
+      const res = solve([...placed.filter((o) => !over.includes(o)), { ...t, x: c.x, y: c.y }],
+        [...rest, ...over], new Set([...locked, t.id]), bumps + over.length);
+      if (res) return res;
+    }
+    return null;
+  }
+  const placed = solve([...others.filter((o) => !hit.includes(o)), moved], hit, new Set([id]), hit.length);
+  if (!placed) return null;
+  return layout.map((o) => placed.find((p) => p.id === o.id)); // keep the original order
+}
+
+// While dragging, show tiles where they would end up.
+function previewPositions(list, skipId) {
+  for (const t of list) if (t.id !== skipId) placeEl(t);
+}
+
+// S / M / L buttons: jump to a preset size, pushing neighbours aside or finding room elsewhere.
+function setSize(id, s) {
+  const t = layout.find((i) => i.id === id);
+  const [w, h] = SIZES[s];
+  if (t.w === w && t.h === h) return;
+  const rect = { x: Math.min(t.x, COLS - w), y: Math.min(t.y, ROWS - h), w, h };
+  let next = tryPlace(id, rect);
+  if (!next) {
+    const free = freeSpot(layout, w, h, id);
+    if (free) next = layout.map((o) => (o.id === id ? { ...o, w, h, ...free } : o));
+  }
+  if (!next) return toast(`No room to make ${TILES[id].name} ${w}×${h} — move or remove a tile first`);
+  layout = next; applyLayout();
+}
+
+function removeTile(id) { layout = layout.filter((t) => t.id !== id); applyLayout(); renderAddMenu(); }
+
+function addTile(id, s) {
+  const [w, h] = SIZES[s];
+  const spot = freeSpot(layout, w, h);
+  if (!spot) return toast(`No free space for a ${w}×${h} tile — remove or shrink one first`);
+  layout = [...layout, { id, w, h, ...spot }];
+  applyLayout(); renderAddMenu();
+}
+
+const SIZE_NAMES = { S: "Small (1×1)", M: "Medium (2×1)", L: "Large (2×2)" };
+const presetOk = (id, s) => bigEnough(id, ...SIZES[s]);
+function renderAddMenu() {
+  const missing = Object.keys(TILES).filter((id) => !layout.some((t) => t.id === id));
+  $("add-menu").innerHTML = missing.length
+    ? missing.map((id) => `<div class="am-row"><span>${TILES[id].name}</span>${["S", "M", "L"].map((s) =>
+        `<button type="button" data-add="${id}" data-size="${s}" title="${SIZE_NAMES[s]}" ${presetOk(id, s) ? "" : "disabled"}>${s}</button>`).join("")}</div>`).join("")
+    : `<div class="empty">Every tile is already on the screen</div>`;
+}
+
+// In edit mode each tile gets a toolbar (name, size, S/M/L presets, remove) and resize handles.
+function buildTileTools() {
+  for (const [id, def] of Object.entries(TILES)) {
+    const bar = document.createElement("div");
+    bar.className = "tile-tools";
+    bar.innerHTML = `<span class="tt-name">${def.name}</span><span class="tt-dims"></span>` +
+      ["S", "M", "L"].map((s) => `<button type="button" class="tt-size" data-size="${s}" title="${SIZE_NAMES[s]}" ${presetOk(id, s) ? "" : "disabled"}>${s}</button>`).join("") +
+      `<button type="button" class="tt-x" title="Remove tile">×</button>`;
+    bar.addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      if (b.classList.contains("tt-x")) removeTile(id); else setSize(id, b.dataset.size);
+    });
+    $(id).appendChild(bar);
+    for (const dir of ["n", "e", "s", "w", "se"]) {
+      const h = document.createElement("div");
+      h.className = `rh rh-${dir}`;
+      h.dataset.dir = dir;
+      h.title = "Drag to resize";
+      $(id).appendChild(h);
+    }
+  }
+  // Dashed outlines of every cell, shown while editing.
+  const grid = document.querySelector(".grid");
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+    const g = document.createElement("div");
+    g.className = "guide";
+    g.style.gridColumn = `${x + 1}`; g.style.gridRow = `${y + 1}`;
+    grid.insertBefore(g, grid.firstChild);
+  }
+}
+
+function setEditing(on) {
+  editing = on;
+  document.body.classList.toggle("editing", on);
+  $("edit-bar").hidden = !on;
+  $("add-menu").hidden = true;
+  if (on) renderAddMenu();
+  updateDraftNote();
+}
+
+function finishEditing() {
+  setEditing(false);
+  const code = layoutCode(layout);
+  if (code === sheetLayout) { store.set(""); updateDraftNote(); return; }
+  store.set(code);
+  updateDraftNote();
+  showCode();
+}
+
+function showCode() {
+  $("layout-code").value = store.get() || layoutCode(layout);
+  $("save-dialog").hidden = false;
+}
+
+// ---- Dragging and resizing: everything snaps to whole cells ----
+function cellMetrics() {
+  const guides = [...document.querySelectorAll(".guide")];
+  const at = (x, y) => guides.find((g) => g.style.gridColumn === `${x + 1}` && g.style.gridRow === `${y + 1}`).getBoundingClientRect();
+  const a = at(0, 0), b = at(1, 0), c = at(0, 1);
+  return { ox: a.left, oy: a.top, sx: b.left - a.left, sy: c.top - a.top };
+}
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+let drag = null;
+document.querySelector(".grid").addEventListener("pointerdown", (e) => {
+  if (!editing || e.button !== 0 || e.target.closest(".tile-tools")) return;
+  const el = e.target.closest(".panel.placed");
+  if (!el) return;
+  e.preventDefault();
+  const r = el.getBoundingClientRect();
+  const handle = e.target.closest(".rh");
+  drag = {
+    id: el.id, el, mode: handle ? "resize" : "move", dir: handle ? handle.dataset.dir : "",
+    orig: { ...layout.find((i) => i.id === el.id) },
+    px: e.clientX, py: e.clientY, gx: e.clientX - r.left, gy: e.clientY - r.top, m: cellMetrics(), next: null,
+  };
+  try { el.setPointerCapture(e.pointerId); } catch (err) {} // keeps the drag going if the mouse leaves the tile
+  el.classList.add(handle ? "resizing" : "dragging");
+  $("add-menu").hidden = true;
+});
+
+// Where the pointer wants the tile to be, in cells.
+function targetRect(e) {
+  const { m, orig: t } = drag;
+  if (drag.mode === "move") {
+    return {
+      x: clamp(Math.round((e.clientX - drag.gx - m.ox) / m.sx), 0, COLS - t.w),
+      y: clamp(Math.round((e.clientY - drag.gy - m.oy) / m.sy), 0, ROWS - t.h),
+      w: t.w, h: t.h,
+    };
+  }
+  // Resizing: the dragged edge snaps to the nearest grid line.
+  const [mw, mh] = TILES[drag.id].min;
+  const col = Math.round((e.clientX - m.ox) / m.sx), row = Math.round((e.clientY - m.oy) / m.sy);
+  const right = t.x + t.w, bottom = t.y + t.h;
+  let { x, y, w, h } = t;
+  if (drag.dir.includes("e")) w = clamp(col - t.x, mw, COLS - t.x);
+  if (drag.dir.includes("w")) { x = clamp(col, 0, right - mw); w = right - x; }
+  if (drag.dir.includes("s")) h = clamp(row - t.y, mh, ROWS - t.y);
+  if (drag.dir.includes("n")) { y = clamp(row, 0, bottom - mh); h = bottom - y; }
+  return { x, y, w, h };
+}
+
+document.addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  const { el, orig: t } = drag;
+  if (drag.mode === "move") el.style.transform = `translate(${e.clientX - drag.px}px, ${e.clientY - drag.py}px)`;
+  const r = targetRect(e);
+  const key = `${r.x}:${r.y}:${r.w}:${r.h}`;
+  if (key !== drag.key) {
+    drag.key = key;
+    // Moving: an exact swap reads most naturally; otherwise push the tiles in the way aside.
+    drag.next = (drag.mode === "move" && tryMove(drag.id, r.x, r.y)) || tryPlace(drag.id, r);
+    const shown = drag.next || layout;
+    previewPositions(shown, drag.mode === "move" ? drag.id : null);
+    if (drag.mode === "resize") el.querySelector(".tt-dims").textContent = `${r.w}×${r.h}`;
+  }
+  const g = $("ghost");
+  g.style.gridColumn = `${r.x + 1} / span ${r.w}`;
+  g.style.gridRow = `${r.y + 1} / span ${r.h}`;
+  const same = r.x === t.x && r.y === t.y && r.w === t.w && r.h === t.h;
+  drag.bad = !same && !drag.next;
+  g.classList.toggle("on", !same);
+  g.classList.toggle("bad", drag.bad);
+});
+function endDrag() {
+  if (!drag) return;
+  drag.el.classList.remove("dragging", "resizing");
+  drag.el.style.transform = "";
+  $("ghost").classList.remove("on");
+  if (drag.next) layout = drag.next;
+  else if (drag.bad) toast("No room there — remove or shrink a tile to free up space");
+  applyLayout(); // commits the change, or puts previewed tiles back if it wasn't valid
+  drag = null;
+}
+document.addEventListener("pointerup", endDrag);
+document.addEventListener("pointercancel", endDrag);
+
+// ---- Edit controls ----
+let hideBtn;
+document.addEventListener("mousemove", () => {
+  if (editing) return;
+  $("edit-btn").classList.add("show");
+  clearTimeout(hideBtn); hideBtn = setTimeout(() => $("edit-btn").classList.remove("show"), 3000);
+});
+$("edit-btn").addEventListener("click", () => setEditing(true));
+$("done-btn").addEventListener("click", finishEditing);
+$("reset-btn").addEventListener("click", () => { layout = parseLayout(DEFAULT_LAYOUT); applyLayout(); renderAddMenu(); });
+$("add-btn").addEventListener("click", () => { renderAddMenu(); $("add-menu").hidden = !$("add-menu").hidden; });
+$("add-menu").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-add]");
+  if (b) { addTile(b.dataset.add, b.dataset.size); $("add-menu").hidden = true; }
+});
+$("draft-show").addEventListener("click", showCode);
+$("dialog-close").addEventListener("click", () => { $("save-dialog").hidden = true; });
+$("copy-code").addEventListener("click", async () => {
+  const code = $("layout-code").value;
+  try { await navigator.clipboard.writeText(code); }
+  catch (e) { $("layout-code").select(); document.execCommand("copy"); }
+  toast("Layout code copied — paste it into Settings › Layout");
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !$("save-dialog").hidden) { $("save-dialog").hidden = true; return; }
+  if (e.key === "Escape" && editing) finishEditing();
+});
+
+buildTileTools();
+applyLayout();
+
+/* ============================================================
+   Status line + scheduling
+   ============================================================ */
+const status = {};
+function setStatus(key, ok) {
+  status[key] = { ok, at: nzNow() };
+  const parts = Object.entries(status).map(([k, v]) =>
+    `${k}: ${v.ok === "demo" ? "demo data" : v.ok ? "updated " + v.at.toLocaleTimeString("en-NZ", { hour: "numeric", minute: "2-digit" }) : "⚠ offline"}`);
+  $("status").textContent = parts.join("  ·  ");
+}
+
+function tick() { renderClock(); renderBins(); }
+tick(); setInterval(tick, 15000);
+loadWeather(); setInterval(loadWeather, CONFIG.WEATHER_REFRESH_MIN * 60000);
+loadSheet(); setInterval(loadSheet, CONFIG.SHEET_REFRESH_MIN * 60000);
+// Re-render the cook roster at midnight, and reload the whole page at 3am
+// so any changes you publish to this file appear automatically.
+setInterval(() => {
+  const n = nzNow();
+  if (n.getHours() === 3 && n.getMinutes() === 0) location.reload();
+}, 60000);
+</script>
+</body>
+</html>
