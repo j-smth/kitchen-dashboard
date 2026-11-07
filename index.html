@@ -421,7 +421,7 @@ body.editing .edit-btn { display: none; }
   </section>
 
   <section class="panel tile-qr" id="qrgrocery">
-    <div class="qr" id="qr-grocery"><div class="code"></div><div><div class="t">Add to list</div><div class="s">Scan with phone</div></div></div>
+    <div class="qr" id="qr-grocery"><div class="code"></div><div><div class="t">Scan to edit</div><div class="s">Meals · groceries · notes</div></div></div>
   </section>
 
   <section class="panel tile-qr" id="qrwifi">
@@ -499,7 +499,7 @@ const CONFIG = {
   // Tab names in the Google Sheet (must match exactly).
   TABS: {
     groceries: "Groceries", week: "Week", notes: "Notes", countdowns: "Countdowns",
-    dinner: "Dinner", settings: "Settings", away: "Away", availability: "Availability",
+    dinner: "Dinner", settings: "Settings", away: "Away", availability: "Availability", meals: "Meal",
   },
 
   // Each person's colour, in the same order as "People" in the Settings tab.
@@ -512,8 +512,10 @@ const CONFIG = {
   // The dashboard repeats it every "everyDays" days.
   // ⚠️ Check one real "Week 2" Wednesday on the Selwyn council calendar and put it here.
   BINS: [
+    // Selwyn: red rubbish and lime-green organics go weekly, yellow recycling fortnightly.
+    { name: "Rubbish",   color: "var(--bin-red)",    anchor: "2026-10-28", everyDays: 7 },
     { name: "Recycling", color: "var(--bin-yellow)", anchor: "2026-10-28", everyDays: 14 },
-    { name: "Rubbish",   color: "var(--bin-red)",    anchor: "2026-10-28", everyDays: 14 },
+    { name: "Green",     color: "var(--bin-green)",  anchor: "2026-10-28", everyDays: 7 },
   ],
   BIN_REMIND_FROM_HOUR: 16, // the evening before, highlight from 4pm
 
@@ -549,15 +551,24 @@ const DEMO = {
     { Item: "Cheese", Qty: "", Done: "" }, { Item: "Dish tabs", Qty: "", Done: "" },
     { Item: "Already bought", Qty: "", Done: "TRUE" },
   ],
-  // The household chart: Day, Meal, Cook, then any number of job columns.
+  meals: [
+    { Day: "Mon", Meal: "Chicken stir fry" },
+    { Day: "Tue", Meal: "Tacos" },
+    { Day: "Wed", Meal: "Spaghetti bolognese" },
+    { Day: "Thu", Meal: "Sausages & mash" },
+    { Day: "Fri", Meal: "Homemade pizza" },
+    { Day: "Sat", Meal: "BBQ" },
+    { Day: "Sun", Meal: "Roast lamb" },
+  ],
+  // The household chore chart: Day, Cook, then any number of job columns.
   week: [
-    { Day: "Mon", Meal: "Chicken stir fry",    Cook: "J", "Set Table & Empty": "J", Wash: "S", "Clear & Dry": "M" },
-    { Day: "Tue", Meal: "Tacos",               Cook: "S", "Set Table & Empty": "S", Wash: "J", "Clear & Dry": "C" },
-    { Day: "Wed", Meal: "Spaghetti bolognese", Cook: "M", "Set Table & Empty": "M", Wash: "S", "Clear & Dry": "C" },
-    { Day: "Thu", Meal: "Sausages & mash",     Cook: "S", "Set Table & Empty": "J", Wash: "M", "Clear & Dry": "C" },
-    { Day: "Fri", Meal: "Homemade pizza",      Cook: "S", "Set Table & Empty": "C", Wash: "M", "Clear & Dry": "J" },
-    { Day: "Sat", Meal: "BBQ",                 Cook: "S", "Set Table & Empty": "J", Wash: "C", "Clear & Dry": "M" },
-    { Day: "Sun", Meal: "Roast lamb",          Cook: "C", "Set Table & Empty": "C", Wash: "M", "Clear & Dry": "J" },
+    { Day: "Mon", Cook: "J", "Set Table & Empty": "J", Wash: "S", "Clear & Dry": "M" },
+    { Day: "Tue", Cook: "S", "Set Table & Empty": "S", Wash: "J", "Clear & Dry": "C" },
+    { Day: "Wed", Cook: "M", "Set Table & Empty": "M", Wash: "S", "Clear & Dry": "C" },
+    { Day: "Thu", Cook: "S", "Set Table & Empty": "J", Wash: "M", "Clear & Dry": "C" },
+    { Day: "Fri", Cook: "S", "Set Table & Empty": "C", Wash: "M", "Clear & Dry": "J" },
+    { Day: "Sat", Cook: "S", "Set Table & Empty": "J", Wash: "C", "Clear & Dry": "M" },
+    { Day: "Sun", Cook: "C", "Set Table & Empty": "C", Wash: "M", "Clear & Dry": "J" },
   ],
   away: [],
   notes: [
@@ -948,6 +959,14 @@ function shareOutAway(rows) {
   return { rows: out, cover };
 }
 
+// Meal tab: Day, Meal. (Older Sheets kept a Meal column on the Week tab; that still works.)
+let MEALS = {};
+function renderMeals(rows) {
+  // a missing Meal tab comes back as another tab: only use rows that look like Day/Meal
+  MEALS = Object.fromEntries(rows.filter((r) => "Day" in r && "Meal" in r).map((r) => [dayKey(r.Day), r.Meal]));
+}
+const mealFor = (day, weekRow) => (Object.keys(MEALS).length ? MEALS[day] : weekRow && weekRow.Meal) || "";
+
 const dayKey = (v) => String(v || "").trim().slice(0, 3).toLowerCase().replace(/^./, (c) => c.toUpperCase());
 const NOT_JOBS = ["day", "meal", "cook"];
 
@@ -959,7 +978,7 @@ function renderWeek(chart) {
   const tc = cover[today] || {};
 
   // Tonight's dinner card
-  $("meal").textContent = t.Meal || "Not planned yet";
+  $("meal").textContent = mealFor(today, t) || "Not planned yet";
   const cooks = resolvePeople(t.Cook);
   $("cook").textContent = !cooks.length ? ""
     : cooks.some((c) => c.all) ? "👩‍🍳 Everyone's cooking"
@@ -970,7 +989,7 @@ function renderWeek(chart) {
   $("roster").innerHTML = ROSTER_ORDER.map((d, i) => {
     const r = byDay[d] || {};
     const cls = i === todayIdx ? "today" : i < todayIdx ? "past" : "";
-    return `<div class="row ${cls}"><div class="d">${d}</div><div>${esc(r.Meal || "—")}</div><div class="c">${whoHtml(r.Cook, (cover[d] || {}).Cook)}</div></div>`;
+    return `<div class="row ${cls}"><div class="d">${d}</div><div>${esc(mealFor(d, r) || "—")}</div><div class="c">${whoHtml(r.Cook, (cover[d] || {}).Cook)}</div></div>`;
   }).join("");
 
   // Today's jobs: every column that isn't Day, Meal or Cook
@@ -1062,7 +1081,7 @@ async function loadSheet() {
   if (!CONFIG.SHEET_ID) {
     renderSettings(DEMO.settings); // first: it sets PEOPLE for the week chart
     renderAway(DEMO.away); renderAvailability([]);
-    renderGroceries(DEMO.groceries); renderWeek(DEMO.week);
+    renderGroceries(DEMO.groceries); renderMeals(DEMO.meals); renderWeek(DEMO.week);
     renderNotes(DEMO.notes); renderCountdowns(DEMO.countdowns); renderHeadcount(DEMO.dinner);
     setStatus("sheet", "demo");
     return;
@@ -1072,10 +1091,10 @@ async function loadSheet() {
     [T.settings, renderSettings], // first: it sets PEOPLE for the week chart
     [T.away, renderAway],         // these two before the week chart, which shares out away people's jobs
     [T.availability, renderAvailability],
-    [T.groceries, renderGroceries], [T.week, renderWeek],
+    [T.groceries, renderGroceries], [T.meals, renderMeals], [T.week, renderWeek],
     [T.notes, renderNotes], [T.countdowns, renderCountdowns], [T.dinner, renderHeadcount],
   ];
-  const results = await Promise.allSettled(jobs.map(([tab]) => [T.away, T.availability].includes(tab) ? fetchTab(tab).catch(() => []) : fetchTab(tab)));
+  const results = await Promise.allSettled(jobs.map(([tab]) => [T.away, T.availability, T.meals].includes(tab) ? fetchTab(tab).catch(() => []) : fetchTab(tab)));
   results.forEach((r, i) => { if (r.status === "fulfilled") jobs[i][1](r.value); });
   setStatus("sheet", results.every((r) => r.status === "fulfilled"));
 }
