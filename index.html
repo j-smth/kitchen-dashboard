@@ -234,6 +234,8 @@ body.night #dinner { filter: saturate(0.8) brightness(0.8); }
 }
 .row .c .av { width: 1.5rem; height: 1.5rem; font-size: 0.8rem; }
 .row .c .who { gap: 0.4rem; }
+/* A dashed ring marks someone covering for a person who is away */
+.who.cover .av { outline: 2px dashed var(--muted); outline-offset: 2px; }
 .label .sub { float: right; color: var(--muted); font-weight: 400; font-size: 1rem; }
 
 /* QR tiles — small tiles for phones to scan */
@@ -430,7 +432,7 @@ body.editing .edit-btn { display: none; }
   <section class="panel" id="bins"><div class="bins-body" id="bins-body"></div></section>
 
   <section class="panel" id="chores">
-    <div class="label">Today's jobs</div>
+    <div class="label">Today's jobs <span class="count-badge" id="away-badge"></span></div>
     <div class="chores" id="chlist"><div class="empty">No jobs set for today</div></div>
   </section>
 
@@ -497,7 +499,7 @@ const CONFIG = {
   // Tab names in the Google Sheet (must match exactly).
   TABS: {
     groceries: "Groceries", week: "Week", notes: "Notes", countdowns: "Countdowns",
-    dinner: "Dinner", settings: "Settings",
+    dinner: "Dinner", settings: "Settings", away: "Away",
   },
 
   // Each person's colour, in the same order as "People" in the Settings tab.
@@ -549,14 +551,15 @@ const DEMO = {
   ],
   // The household chart: Day, Meal, Cook, then any number of job columns.
   week: [
-    { Day: "Mon", Meal: "Chicken stir fry",    Cook: "C",   "Set Table & Empty": "C", Wash: "J", "Clear & Dry": "M" },
-    { Day: "Tue", Meal: "Tacos",               Cook: "S",   "Set Table & Empty": "S", Wash: "M", "Clear & Dry": "C" },
-    { Day: "Wed", Meal: "Spaghetti bolognese", Cook: "J",   "Set Table & Empty": "J", Wash: "S", "Clear & Dry": "C" },
-    { Day: "Thu", Meal: "Sausages & mash",     Cook: "M",   "Set Table & Empty": "M", Wash: "S", "Clear & Dry": "J" },
-    { Day: "Fri", Meal: "Homemade pizza",      Cook: "All", "Set Table & Empty": "C", Wash: "S", "Clear & Dry": "J" },
-    { Day: "Sat", Meal: "BBQ",                 Cook: "S",   "Set Table & Empty": "J", Wash: "M", "Clear & Dry": "C" },
-    { Day: "Sun", Meal: "Roast lamb",          Cook: "S",   "Set Table & Empty": "C", Wash: "M", "Clear & Dry": "J" },
+    { Day: "Mon", Meal: "Chicken stir fry",    Cook: "J", "Set Table & Empty": "J", Wash: "S", "Clear & Dry": "M" },
+    { Day: "Tue", Meal: "Tacos",               Cook: "S", "Set Table & Empty": "S", Wash: "J", "Clear & Dry": "C" },
+    { Day: "Wed", Meal: "Spaghetti bolognese", Cook: "M", "Set Table & Empty": "M", Wash: "S", "Clear & Dry": "C" },
+    { Day: "Thu", Meal: "Sausages & mash",     Cook: "S", "Set Table & Empty": "J", Wash: "M", "Clear & Dry": "C" },
+    { Day: "Fri", Meal: "Homemade pizza",      Cook: "S", "Set Table & Empty": "C", Wash: "M", "Clear & Dry": "J" },
+    { Day: "Sat", Meal: "BBQ",                 Cook: "S", "Set Table & Empty": "J", Wash: "C", "Clear & Dry": "M" },
+    { Day: "Sun", Meal: "Roast lamb",          Cook: "C", "Set Table & Empty": "C", Wash: "M", "Clear & Dry": "J" },
   ],
+  away: [],
   notes: [
     { Note: "Plumber Thursday 10am", Until: "" },
     { Note: "Library books due Friday", Until: "" },
@@ -854,21 +857,81 @@ function resolvePeople(value) {
   });
 }
 const plainNames = (value) => resolvePeople(value).map((p) => p.name).join(" & ");
-function whoHtml(value) {
+function whoHtml(value, cover) {
   return resolvePeople(value).map((p) => {
+    const covering = cover && cover.has(p.name);
     const av = p.all ? `<span class="av" style="background:var(--gemini)">✦</span>`
       : `<span class="av" style="background:${p.colour || "var(--muted)"}">${esc(p.name[0])}</span>`;
-    return `<span class="who">${av}<span class="nm">${esc(p.name)}</span></span>`;
+    return `<span class="who${covering ? " cover" : ""}"${covering ? ' title="Covering while someone is away"' : ""}>${av}<span class="nm">${esc(p.name)}</span></span>`;
   }).join(" ");
+}
+
+// Away tab: Person, From, To (dates, both inclusive). While someone is away, their slots on the
+// Week chart are shared out among whoever is home, keeping everyone's week as even as possible.
+let AWAY = [];
+function renderAway(rows) {
+  AWAY = rows
+    .filter((r) => r.Person && r.From) // a missing Away tab comes back as another tab: ignore it
+    .map((r) => ({ name: (resolvePeople(r.Person)[0] || {}).name, from: parseDate(r.From), to: parseDate(r.To) || parseDate(r.From) }))
+    .filter((a) => a.name && a.from && a.to);
+}
+const isAway = (name, date) => AWAY.some((a) => a.name === name && date >= a.from && date <= a.to);
+
+// The date of each roster day in the current Mon–Sun week.
+function weekDate(day) {
+  const n = startOfDay(nzNow());
+  n.setDate(n.getDate() - (n.getDay() + 6) % 7 + ROSTER_ORDER.indexOf(day));
+  return n;
+}
+
+// Returns { rows, cover }: the chart with away people's slots handed to someone at home, and
+// cover[day][column] = names now covering that slot. Cooking counts double. Each freed slot
+// goes to whoever has the lightest week so far, preferring someone not already busy that day.
+const JOB_WEIGHT = (col) => (col.toLowerCase() === "cook" ? 2 : 1);
+function shareOutAway(rows) {
+  const out = rows.map((r) => ({ ...r }));
+  const cover = {};
+  if (!AWAY.length || !PEOPLE.length) return { rows: out, cover };
+  const cols = Object.keys(out[0] || {}).filter((k) => !["day", "meal"].includes(k.toLowerCase()));
+  const names = (v) => resolvePeople(v).filter((p) => !p.all).map((p) => p.name);
+  const load = Object.fromEntries(PEOPLE.map((p) => [p, 0]));
+  const busy = {}; // busy[day][name] = jobs that day
+  const freed = [];
+  out.forEach((r) => {
+    const d = dayKey(r.Day), date = weekDate(d);
+    if (!ROSTER_ORDER.includes(d)) return;
+    busy[d] = {};
+    cols.forEach((c) => names(r[c]).forEach((n) => {
+      if (isAway(n, date)) freed.push({ r, d, c, n, date });
+      else { load[n] = (load[n] || 0) + JOB_WEIGHT(c); busy[d][n] = (busy[d][n] || 0) + 1; }
+    }));
+  });
+  // Heaviest jobs first, then in day order, so the big ones are spread before the small ones.
+  freed.sort((a, b) => JOB_WEIGHT(b.c) - JOB_WEIGHT(a.c) || ROSTER_ORDER.indexOf(a.d) - ROSTER_ORDER.indexOf(b.d));
+  freed.forEach(({ r, d, c, n, date }, i) => {
+    const inCell = names(r[c]);
+    const pick = PEOPLE
+      .filter((p) => !isAway(p, date) && !inCell.includes(p))
+      .map((p, j) => ({ p, cost: load[p] + 0.5 * (busy[d][p] || 0), tie: (j + i) % PEOPLE.length }))
+      .sort((a, b) => a.cost - b.cost || a.tie - b.tie)[0];
+    if (!pick) return; // nobody home: leave it as charted
+    r[c] = inCell.map((x) => (x === n ? pick.p : x)).join(" & ");
+    load[pick.p] += JOB_WEIGHT(c);
+    busy[d][pick.p] = (busy[d][pick.p] || 0) + 1;
+    ((cover[d] ||= {})[c] ||= new Set()).add(pick.p);
+  });
+  return { rows: out, cover };
 }
 
 const dayKey = (v) => String(v || "").trim().slice(0, 3).toLowerCase().replace(/^./, (c) => c.toUpperCase());
 const NOT_JOBS = ["day", "meal", "cook"];
 
-function renderWeek(rows) {
+function renderWeek(chart) {
   const today = DAYS[nzNow().getDay()];
+  const { rows, cover } = shareOutAway(chart);
   const byDay = Object.fromEntries(rows.map((r) => [dayKey(r.Day), r]));
   const t = byDay[today] || {};
+  const tc = cover[today] || {};
 
   // Tonight's dinner card
   $("meal").textContent = t.Meal || "Not planned yet";
@@ -882,14 +945,17 @@ function renderWeek(rows) {
   $("roster").innerHTML = ROSTER_ORDER.map((d, i) => {
     const r = byDay[d] || {};
     const cls = i === todayIdx ? "today" : i < todayIdx ? "past" : "";
-    return `<div class="row ${cls}"><div class="d">${d}</div><div>${esc(r.Meal || "—")}</div><div class="c">${whoHtml(r.Cook)}</div></div>`;
+    return `<div class="row ${cls}"><div class="d">${d}</div><div>${esc(r.Meal || "—")}</div><div class="c">${whoHtml(r.Cook, (cover[d] || {}).Cook)}</div></div>`;
   }).join("");
 
   // Today's jobs: every column that isn't Day, Meal or Cook
   const jobs = Object.keys(t).filter((k) => !NOT_JOBS.includes(k.toLowerCase()) && t[k]);
   $("chlist").innerHTML = jobs.length
-    ? jobs.slice(0, 5).map((k) => `<div><span>${esc(k)}</span>${whoHtml(t[k])}</div>`).join("")
+    ? jobs.slice(0, 5).map((k) => `<div><span>${esc(k)}</span>${whoHtml(t[k], tc[k])}</div>`).join("")
     : `<div class="empty">No jobs set for today</div>`;
+
+  const awayNow = PEOPLE.filter((p) => isAway(p, startOfDay(nzNow())));
+  $("away-badge").textContent = awayNow.length ? `✈ ${awayNow.join(" & ")} away` : "";
 }
 
 function renderNotes(rows) {
@@ -928,7 +994,8 @@ function renderHeadcount(rows) {
   const today = DAYS[nzNow().getDay()];
   const people = rows.filter((r) => r.Person);
   if (!people.length) { $("headcount").textContent = ""; return; }
-  const out = people.filter((r) => !isDone(r[today])).map((r) => r.Person);
+  const date = startOfDay(nzNow());
+  const out = people.filter((r) => !isDone(r[today]) || isAway((resolvePeople(r.Person)[0] || {}).name, date)).map((r) => r.Person);
   const home = people.length - out.length;
   $("headcount").textContent = `🍽 ${home} home for dinner` + (out.length ? ` · ${out.join(", ")} out` : "");
 }
@@ -969,6 +1036,7 @@ function renderSettings(rows) {
 async function loadSheet() {
   if (!CONFIG.SHEET_ID) {
     renderSettings(DEMO.settings); // first: it sets PEOPLE for the week chart
+    renderAway(DEMO.away);
     renderGroceries(DEMO.groceries); renderWeek(DEMO.week);
     renderNotes(DEMO.notes); renderCountdowns(DEMO.countdowns); renderHeadcount(DEMO.dinner);
     setStatus("sheet", "demo");
@@ -977,10 +1045,11 @@ async function loadSheet() {
   const T = CONFIG.TABS;
   const jobs = [
     [T.settings, renderSettings], // first: it sets PEOPLE for the week chart
+    [T.away, renderAway],         // before the week chart, which shares out away people's jobs
     [T.groceries, renderGroceries], [T.week, renderWeek],
     [T.notes, renderNotes], [T.countdowns, renderCountdowns], [T.dinner, renderHeadcount],
   ];
-  const results = await Promise.allSettled(jobs.map(([tab]) => fetchTab(tab)));
+  const results = await Promise.allSettled(jobs.map(([tab]) => tab === T.away ? fetchTab(tab).catch(() => []) : fetchTab(tab)));
   results.forEach((r, i) => { if (r.status === "fulfilled") jobs[i][1](r.value); });
   setStatus("sheet", results.every((r) => r.status === "fulfilled"));
 }
