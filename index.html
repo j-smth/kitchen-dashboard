@@ -499,7 +499,7 @@ const CONFIG = {
   // Tab names in the Google Sheet (must match exactly).
   TABS: {
     groceries: "Groceries", week: "Week", notes: "Notes", countdowns: "Countdowns",
-    dinner: "Dinner", settings: "Settings", away: "Away",
+    dinner: "Dinner", settings: "Settings", away: "Away", availability: "Availability",
   },
 
   // Each person's colour, in the same order as "People" in the Settings tab.
@@ -590,6 +590,12 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const ROSTER_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+// ?date=YYYY-MM-DD previews the dashboard as it will look on that day (time of day stays real).
+const PREVIEW_DATE = (() => {
+  const m = (new URLSearchParams(location.search).get("date") || "").match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+})();
+
 // Current wall-clock time in the configured timezone, as a plain Date whose
 // local fields match NZ time (so it works even if the TV's timezone is wrong).
 function nzNow() {
@@ -597,7 +603,9 @@ function nzNow() {
     timeZone: CONFIG.LOCATION.tz, year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
   }).formatToParts(new Date()).reduce((o, p) => (o[p.type] = p.value, o), {});
-  return new Date(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+  const n = new Date(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+  if (PREVIEW_DATE) n.setFullYear(PREVIEW_DATE.getFullYear(), PREVIEW_DATE.getMonth(), PREVIEW_DATE.getDate());
+  return n;
 }
 const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 function parseDate(s) {
@@ -877,6 +885,21 @@ function renderAway(rows) {
 }
 const isAway = (name, date) => AWAY.some((a) => a.name === name && date >= a.from && date <= a.to);
 
+// Availability tab: Person, then Mon … Sun. Only used when sharing out an away person's jobs.
+//   "Free"    = home / more time that day, so gets picked first
+//   "No cook" = can do other jobs but not the cooking
+//   "No"      = can't take any extra jobs that day
+let AVAIL = {};
+function renderAvailability(rows) {
+  AVAIL = {};
+  rows.filter((r) => r.Person && ROSTER_ORDER.some((d) => d in r)).forEach((r) => {
+    const name = (resolvePeople(r.Person)[0] || {}).name;
+    if (name) AVAIL[name] = Object.fromEntries(ROSTER_ORDER.map((d) => [d, String(r[d] || "").toLowerCase().replace(/[^a-z]/g, "")]));
+  });
+}
+const availOn = (p, d) => (AVAIL[p] || {})[d] || "";
+const canTake = (p, d, col) => { const a = availOn(p, d); return a !== "no" && !(a === "nocook" && col.toLowerCase() === "cook"); };
+
 // The date of each roster day in the current Mon–Sun week.
 function weekDate(day) {
   const n = startOfDay(nzNow());
@@ -886,7 +909,8 @@ function weekDate(day) {
 
 // Returns { rows, cover }: the chart with away people's slots handed to someone at home, and
 // cover[day][column] = names now covering that slot. Cooking counts double. Each freed slot
-// goes to whoever has the lightest week so far, preferring someone not already busy that day.
+// goes to whoever has the lightest week so far, preferring someone not already busy that day
+// and someone marked "Free" that day, and skipping anyone the Availability tab rules out.
 const JOB_WEIGHT = (col) => (col.toLowerCase() === "cook" ? 2 : 1);
 function shareOutAway(rows) {
   const out = rows.map((r) => ({ ...r }));
@@ -910,9 +934,10 @@ function shareOutAway(rows) {
   freed.sort((a, b) => JOB_WEIGHT(b.c) - JOB_WEIGHT(a.c) || ROSTER_ORDER.indexOf(a.d) - ROSTER_ORDER.indexOf(b.d));
   freed.forEach(({ r, d, c, n, date }, i) => {
     const inCell = names(r[c]);
-    const pick = PEOPLE
-      .filter((p) => !isAway(p, date) && !inCell.includes(p))
-      .map((p, j) => ({ p, cost: load[p] + 0.5 * (busy[d][p] || 0), tie: (j + i) % PEOPLE.length }))
+    const home = PEOPLE.filter((p) => !isAway(p, date) && !inCell.includes(p));
+    const able = home.filter((p) => canTake(p, d, c));
+    const pick = (able.length ? able : home) // if nobody is able, someone at home still has to do it
+      .map((p, j) => ({ p, cost: load[p] + 0.5 * (busy[d][p] || 0) - (availOn(p, d) === "free" ? 1 : 0), tie: (j + i) % PEOPLE.length }))
       .sort((a, b) => a.cost - b.cost || a.tie - b.tie)[0];
     if (!pick) return; // nobody home: leave it as charted
     r[c] = inCell.map((x) => (x === n ? pick.p : x)).join(" & ");
@@ -1036,7 +1061,7 @@ function renderSettings(rows) {
 async function loadSheet() {
   if (!CONFIG.SHEET_ID) {
     renderSettings(DEMO.settings); // first: it sets PEOPLE for the week chart
-    renderAway(DEMO.away);
+    renderAway(DEMO.away); renderAvailability([]);
     renderGroceries(DEMO.groceries); renderWeek(DEMO.week);
     renderNotes(DEMO.notes); renderCountdowns(DEMO.countdowns); renderHeadcount(DEMO.dinner);
     setStatus("sheet", "demo");
@@ -1045,11 +1070,12 @@ async function loadSheet() {
   const T = CONFIG.TABS;
   const jobs = [
     [T.settings, renderSettings], // first: it sets PEOPLE for the week chart
-    [T.away, renderAway],         // before the week chart, which shares out away people's jobs
+    [T.away, renderAway],         // these two before the week chart, which shares out away people's jobs
+    [T.availability, renderAvailability],
     [T.groceries, renderGroceries], [T.week, renderWeek],
     [T.notes, renderNotes], [T.countdowns, renderCountdowns], [T.dinner, renderHeadcount],
   ];
-  const results = await Promise.allSettled(jobs.map(([tab]) => tab === T.away ? fetchTab(tab).catch(() => []) : fetchTab(tab)));
+  const results = await Promise.allSettled(jobs.map(([tab]) => [T.away, T.availability].includes(tab) ? fetchTab(tab).catch(() => []) : fetchTab(tab)));
   results.forEach((r, i) => { if (r.status === "fulfilled") jobs[i][1](r.value); });
   setStatus("sheet", results.every((r) => r.status === "fulfilled"));
 }
