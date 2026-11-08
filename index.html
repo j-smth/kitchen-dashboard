@@ -202,7 +202,10 @@ body.night #dinner { filter: saturate(0.8) brightness(0.8); }
 /* Bins */
 #bins { justify-content: center; }
 .bins-body { display: flex; flex-direction: row; align-items: center; gap: 1.4rem; }
-#bins.urgent { background: var(--amber-soft); box-shadow: inset 0 0 0 0.2rem var(--bin-yellow); }
+#bins.urgent { background: var(--amber-soft); box-shadow: inset 0 0 0 0.2rem var(--bin-yellow); animation: bin-pulse 2.4s ease-in-out infinite; }
+@keyframes bin-pulse { 50% { box-shadow: inset 0 0 0 0.45rem var(--bin-yellow); } }
+@media (prefers-reduced-motion: reduce) { #bins.urgent { animation: none; } }
+.bin-alert { display: inline-block; margin: 0 0 0.4rem; padding: 0.15rem 0.8rem; border-radius: 999px; background: var(--bin-yellow); color: #1f1f1f; font-size: 1rem; font-weight: 700; }
 .bin-dots { display: flex; gap: 0.6rem; }
 .bin-dot { width: 3.4rem; height: 4.2rem; border-radius: 0.5rem 0.5rem 0.8rem 0.8rem; position: relative; }
 .bin-dot::before { content: ""; position: absolute; left: -0.25rem; right: -0.25rem; top: -0.5rem; height: 0.7rem; border-radius: 0.35rem; background: inherit; filter: brightness(0.85); }
@@ -517,7 +520,7 @@ const CONFIG = {
     { name: "Recycling", color: "var(--bin-yellow)", anchor: "2026-10-28", everyDays: 14 },
     { name: "Green",     color: "var(--bin-green)",  anchor: "2026-10-28", everyDays: 7 },
   ],
-  BIN_REMIND_FROM_HOUR: 16, // the evening before, highlight from 4pm
+  BIN_REMIND_FROM_HOUR: 0, // bins go out the night before: remind all that day (e.g. 12 = from noon)
 
   // Dim the screen between these hours (24h). Set both to 0 to disable.
   NIGHT_START: 22,
@@ -691,18 +694,19 @@ function renderBins() {
   const days = daysBetween(today, new Date(soonest));
   const names = due.map((b) => b.name).join(" + ");
 
+  // The bins go out the evening before collection, so the day before is the reminder day.
   let big, small, urgent = false;
-  if (days === 0) { big = `${names} — today`; small = "Make sure they're out by 7am"; urgent = true; }
+  if (days === 0) { big = `${names} — collected today`; small = "Bring the bins back in after collection"; }
   else if (days === 1) {
-    big = `${names} — tomorrow`;
-    small = `Put out tonight · ${fmtDay(new Date(soonest))}`;
     urgent = now.getHours() >= CONFIG.BIN_REMIND_FROM_HOUR;
+    big = urgent ? "Put the bins out tonight" : `${names} — tomorrow`;
+    small = urgent ? `${names} · collected tomorrow` : `Put out tonight · ${fmtDay(new Date(soonest))}`;
   } else { big = `${names} in ${days} days`; small = fmtDay(new Date(soonest)); }
 
   $("bins").classList.toggle("urgent", urgent);
   $("bins-body").innerHTML = `
     <div class="bin-dots">${due.map((b) => `<div class="bin-dot" style="background:${b.color}"></div>`).join("")}</div>
-    <div class="bin-text"><div class="label" style="margin:0 0 .3rem">Bin day</div>
+    <div class="bin-text">${urgent ? `<div class="bin-alert">🔔 Reminder</div>` : `<div class="label" style="margin:0 0 .3rem">Bin day</div>`}
       <div class="big">${esc(big)}</div><div class="small">${esc(small)}</div></div>`;
 }
 
