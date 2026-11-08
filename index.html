@@ -215,7 +215,7 @@ body.dark .t-dinner { filter: saturate(0.85) brightness(0.85); }
 .bin { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; width: 4.8rem; }
 .bin-name { font-size: 0.9rem; font-weight: 500; color: var(--ink-2); }
 .bin.off .bin-dot { opacity: 0.18; }
-.bin.off .bin-name { color: var(--muted); text-decoration: line-through; }
+.bin.off .bin-name { color: var(--muted); }
 .bin-dot { width: 3rem; height: 3.6rem; margin-top: 0.5rem; border-radius: 0.5rem 0.5rem 0.8rem 0.8rem; position: relative; }
 .bin-dot::before { content: ""; position: absolute; left: -0.25rem; right: -0.25rem; top: -0.5rem; height: 0.7rem; border-radius: 0.35rem; background: inherit; filter: brightness(0.85); }
 .bin-text { min-width: 0; }
@@ -780,7 +780,7 @@ function renderBins() {
   const due = upcoming.filter((b) => b.next.getTime() === soonest);
   const days = daysBetween(today, new Date(soonest));
 
-  // Every bin is always shown; the ones not going out this time are faded and struck through.
+  // Every bin is always shown; the ones not going out this time are faded.
   // The bins go out the evening before collection, so the day before is the reminder day.
   const when = new Date(soonest);
   let big, small, urgent = false;
