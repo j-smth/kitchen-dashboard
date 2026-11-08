@@ -111,15 +111,15 @@ body {
 }
 
 /* Today: clock + tonight's dinner + the day's calendar, in one wide tile */
-#today.placed { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.1fr) minmax(0, 1fr); gap: 1.2rem; padding: 0.8rem; }
+#today.placed { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.05fr) minmax(0, 1fr); gap: 1.2rem; padding: 0.8rem; }
 #today[data-w="4"] { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); }
 #today[data-w="4"] .t-agenda { display: none; }
 .t-clock { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 0 0.8rem; }
 .t-agenda { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; padding: 0.4rem 0.6rem 0 0; }
 .time { font-size: 5.6rem; font-weight: 500; line-height: 1.05; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .date { font-size: 1.75rem; font-weight: 400; color: var(--ink-2); margin-top: 0.3rem; }
-.meta-row { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.6rem; white-space: nowrap; overflow: hidden; }
-.sun { font-size: 1.15rem; color: var(--muted); margin-right: 0.4rem; }
+.meta-row { display: flex; align-items: center; gap: 0.45em; margin-top: 0.6rem; white-space: nowrap; overflow: hidden; font-size: 1.1rem; }
+.sun { font-size: 1.05em; color: var(--muted); margin-right: 0.35em; }
 
 /* Weather */
 #weather { }
@@ -233,7 +233,7 @@ body.night .t-dinner { filter: saturate(0.8) brightness(0.8); }
 
 /* Countdowns — pills under the date */
 .cd { display: flex; gap: 0.5rem; min-width: 0; }
-.cd .pill { display: flex; min-width: 0; background: var(--surface-2); border-radius: 999px; padding: 0.25rem 0.8rem; font-size: 1.05rem; color: var(--ink-2); }
+.cd .pill { display: flex; min-width: 0; background: var(--surface-2); border-radius: 999px; padding: 0.25em 0.75em; font-size: 0.95em; color: var(--ink-2); }
 .cd .pill .pn { overflow: hidden; text-overflow: ellipsis; }
 .cd .pill b { flex: none; }
 .sun { flex: none; }
@@ -745,6 +745,7 @@ const FIT = {
   bins:    [".bin-text .small"],
 };
 function fitTiles() {
+  document.querySelectorAll(".panel.placed .wash .w-text, .panel.placed .ev .nm").forEach((n) => shrinkToFit(n));
   for (const [id, drops] of Object.entries(FIT)) {
     const tile = $(id);
     if (!tile || !tile.classList.contains("placed")) continue;
@@ -780,7 +781,7 @@ function renderBins() {
     urgent = now.getHours() >= CONFIG.BIN_REMIND_FROM_HOUR;
     big = urgent ? "Put the bins out tonight" : "Bins go out tonight";
     small = "Collected tomorrow";
-  } else { big = `Bin day in ${days} days`; small = fmtDay(when) + skip; }
+  } else { big = `Bin day in ${days}\u00a0days`; small = fmtDay(when) + skip; } // "3 Days" stays together when it wraps
 
   $("bins").classList.toggle("urgent", urgent);
   $("bins-body").innerHTML = `
@@ -1148,6 +1149,15 @@ function fitPills() {
   const row = document.querySelector(".meta-row"), pills = $("clist");
   const squeezed = () => row.scrollWidth > row.clientWidth + 1 || [...pills.querySelectorAll(".pn")].some((n) => n.scrollWidth > n.clientWidth + 1);
   while (pills.children.length > 1 && squeezed()) pills.lastElementChild.remove();
+  shrinkToFit(row, squeezed);
+}
+
+// Rather than cut text off with "…", shrink a line's text a little (down to 70%) until it fits.
+// The screen's shape decides how much room there is: the Frame in full screen has less than a laptop.
+function shrinkToFit(el, over = () => el.scrollWidth > el.clientWidth + 1) {
+  el.style.fontSize = "";
+  const base = parseFloat(getComputedStyle(el).fontSize);
+  for (let f = 0.96; over() && f >= 0.7; f -= 0.04) el.style.fontSize = `${base * f}px`;
 }
 
 // Dinner: one row per person, a ticked box per weekday means "home for dinner".
