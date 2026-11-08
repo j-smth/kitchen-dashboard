@@ -110,8 +110,12 @@ body {
   margin-bottom: 0.6rem;
 }
 
-/* Clock */
-#clock { background: transparent; padding: 0.4rem 0.4rem 0; }
+/* Today: clock + tonight's dinner + the day's calendar, in one wide tile */
+#today.placed { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.1fr) minmax(0, 1fr); gap: 1.2rem; padding: 0.8rem; }
+#today[data-w="4"] { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); }
+#today[data-w="4"] .t-agenda { display: none; }
+.t-clock { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 0 0.8rem; }
+.t-agenda { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; padding: 0.4rem 0.6rem 0 0; }
 .time { font-size: 5.6rem; font-weight: 500; line-height: 1.05; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .date { font-size: 1.75rem; font-weight: 400; color: var(--ink-2); margin-top: 0.3rem; }
 .meta-row { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.6rem; white-space: nowrap; overflow: hidden; }
@@ -120,8 +124,8 @@ body {
 /* Weather */
 #weather { }
 .now { display: flex; align-items: center; gap: 1.4rem; }
-.now-icon { font-size: 4.2rem; line-height: 1; }
-.now-temp { font-size: 4.2rem; font-weight: 400; line-height: 1; letter-spacing: -0.02em; }
+.now-icon { font-size: 3.8rem; line-height: 1; }
+.now-temp { font-size: 3.8rem; font-weight: 400; line-height: 1; letter-spacing: -0.02em; }
 .now-desc { font-size: 1.6rem; font-weight: 500; }
 .now-meta { font-size: 1.2rem; color: var(--ink-2); margin-top: 0.3rem; }
 .alert {
@@ -134,12 +138,12 @@ body {
   color: var(--blue);
 }
 .alert.warn { background: var(--amber-soft); color: var(--amber); }
-.hours { display: flex; justify-content: space-between; margin-top: 0.7rem; padding-top: 0.6rem; border-top: 1px solid var(--line); }
+.hours { display: flex; justify-content: space-between; margin-top: 0.6rem; padding-top: 0.5rem; border-top: 1px solid var(--line); }
 .hour { text-align: center; font-size: 1.2rem; font-weight: 500; }
 .hour .h { color: var(--muted); font-weight: 400; }
 .hour .i { font-size: 1.6rem; margin: 0.15rem 0; }
 .hour .p { color: var(--blue); font-size: 1rem; min-height: 1.2em; }
-.days { display: flex; flex-direction: column; gap: 0.3rem; margin-top: auto; padding-top: 0.6rem; }
+.days { display: flex; flex-direction: column; gap: 0.2rem; margin-top: auto; padding-top: 0.4rem; }
 .day { display: grid; grid-template-columns: 4.5rem 2.6rem 1fr auto; align-items: center; font-size: 1.4rem; gap: 0.6rem; }
 .day .d { color: var(--ink-2); }
 .day .r { color: var(--blue); font-size: 1.1rem; }
@@ -147,13 +151,13 @@ body {
 .day .t span { color: var(--muted); font-weight: 400; }
 
 /* Tonight's dinner — the hero, in the Gemini gradient */
-#dinner { background: var(--gemini); color: #ffffff; }
-#dinner .label { color: rgba(255, 255, 255, 0.9); }
-#dinner .spark { background: #ffffff; }
+.t-dinner { background: var(--gemini); color: #ffffff; border-radius: calc(var(--radius) - 0.4rem); padding: 1.1rem 1.5rem; display: flex; flex-direction: column; justify-content: center; min-width: 0; overflow: hidden; }
+.t-dinner .label { color: rgba(255, 255, 255, 0.9); }
+.t-dinner .spark { background: #ffffff; }
 .meal { font-size: 2.7rem; font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; }
 .cook-row { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 0.9rem; margin-top: 0.5rem; }
 .cook { font-size: 1.45rem; color: rgba(255, 255, 255, 0.9); }
-body.night #dinner { filter: saturate(0.8) brightness(0.8); }
+body.night .t-dinner { filter: saturate(0.8) brightness(0.8); }
 
 /* Week roster */
 #week { }
@@ -201,27 +205,38 @@ body.night #dinner { filter: saturate(0.8) brightness(0.8); }
 
 /* Bins */
 #bins { justify-content: center; }
-.bins-body { display: flex; flex-direction: row; align-items: center; gap: 1.4rem; }
+.bins-body { display: flex; flex-direction: row; align-items: center; gap: 1.4rem; min-height: 0; }
 #bins.urgent { background: var(--amber-soft); box-shadow: inset 0 0 0 0.2rem var(--bin-yellow); animation: bin-pulse 2.4s ease-in-out infinite; }
 @keyframes bin-pulse { 50% { box-shadow: inset 0 0 0 0.45rem var(--bin-yellow); } }
 @media (prefers-reduced-motion: reduce) { #bins.urgent { animation: none; } }
 .bin-alert { display: inline-block; margin: 0 0 0.4rem; padding: 0.15rem 0.8rem; border-radius: 999px; background: var(--bin-yellow); color: #1f1f1f; font-size: 1rem; font-weight: 700; }
-.bin-dots { display: flex; gap: 0.6rem; }
-.bin-dot { width: 3.4rem; height: 4.2rem; border-radius: 0.5rem 0.5rem 0.8rem 0.8rem; position: relative; }
+.bin-dots { display: flex; gap: 0.3rem; flex: none; }
+.bin { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; width: 4.8rem; }
+.bin-name { font-size: 0.9rem; font-weight: 500; color: var(--ink-2); }
+.bin.off .bin-dot { opacity: 0.18; }
+.bin.off .bin-name { color: var(--muted); text-decoration: line-through; }
+.bin-dot { width: 3rem; height: 3.6rem; margin-top: 0.5rem; border-radius: 0.5rem 0.5rem 0.8rem 0.8rem; position: relative; }
 .bin-dot::before { content: ""; position: absolute; left: -0.25rem; right: -0.25rem; top: -0.5rem; height: 0.7rem; border-radius: 0.35rem; background: inherit; filter: brightness(0.85); }
-.bin-text .big { font-size: 1.8rem; font-weight: 500; }
-.bin-text .small { font-size: 1.2rem; color: var(--ink-2); margin-top: 0.2rem; }
+.bin-text { min-width: 0; }
+.bin-text .big { font-size: 1.7rem; font-weight: 500; line-height: 1.2; }
+.bin-text .small { font-size: 1.15rem; color: var(--ink-2); margin-top: 0.3rem; }
 
-/* Notes */
-#notes { }
-.notes { list-style: none; }
-.notes li { font-size: 1.4rem; padding: 0.3rem 0; }
-.notes li::before { content: ""; display: inline-block; width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--gemini); margin-right: 0.8rem; vertical-align: middle; }
-.notes li.empty::before { display: none; }
+/* Coming up (inside the Today tile): today's birthdays/events, then the next ones */
+.agenda { display: flex; flex-direction: column; gap: 0.15rem; }
+.ev { display: grid; grid-template-columns: 1.8rem minmax(0, 1fr) auto; align-items: center; gap: 0.6rem; font-size: 1.2rem; line-height: 1.3; }
+.ev .ic { text-align: center; }
+.ev .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ev .tm { color: var(--muted); font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.ev.on { font-weight: 500; }
+.ev.now { background: var(--pink-soft); border-radius: 999px; padding: 0.1rem 0.8rem 0.1rem 0.3rem; margin: 0 -0.4rem; }
+.ev.now .tm { color: var(--pink); font-weight: 600; }
 
 /* Countdowns — pills under the date */
-.cd { display: flex; gap: 0.5rem; }
-.cd .pill { background: var(--surface); border-radius: 999px; padding: 0.25rem 0.8rem; font-size: 1.05rem; color: var(--ink-2); }
+.cd { display: flex; gap: 0.5rem; min-width: 0; }
+.cd .pill { display: flex; min-width: 0; background: var(--surface-2); border-radius: 999px; padding: 0.25rem 0.8rem; font-size: 1.05rem; color: var(--ink-2); }
+.cd .pill .pn { overflow: hidden; text-overflow: ellipsis; }
+.cd .pill b { flex: none; }
+.sun { flex: none; }
 .cd .pill b { color: var(--pink); font-weight: 500; margin-left: 0.3rem; font-variant-numeric: tabular-nums; }
 
 /* Chores */
@@ -257,8 +272,8 @@ body.night #dinner { filter: saturate(0.8) brightness(0.8); }
 .headcount:empty { display: none; }
 
 /* Washing-line score */
-.wash { display: flex; align-items: center; gap: 0.9rem; margin-top: 0.7rem; padding: 0.4rem 1.1rem; border-radius: 999px; background: var(--surface-2); font-size: 1.25rem; }
-.wash .w-text { flex: 1; min-width: 0; }
+.wash { display: flex; align-items: center; gap: 0.9rem; margin-top: 0.6rem; padding: 0.4rem 1.1rem; border-radius: 999px; background: var(--surface-2); font-size: 1.25rem; }
+.wash .w-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wash .w-text span { color: var(--muted); }
 .meter { display: flex; gap: 0.2rem; flex: none; }
 .meter i { width: 0.55rem; height: 1.2rem; border-radius: 0.2rem; background: var(--line); }
@@ -281,23 +296,17 @@ body.has-count .meta-row .cd { display: none; }
 body.has-wash #weather .wash { display: none; }
 
 /* ---- Size variants: each tile adapts to small / medium / large ---- */
-#clock[data-size="S"] .time { font-size: 3.8rem; }
-#clock[data-size="S"] .date { font-size: 1.25rem; }
-#clock[data-size="S"] .meta-row { display: none; }
 #weather[data-size="M"] .hours, #weather[data-size="M"] .days, #weather[data-size="M"] .wash { display: none; }
-#dinner[data-size="S"] .meal { font-size: 1.8rem; }
-#dinner[data-size="S"] .cook { font-size: 1.1rem; }
-#dinner[data-size="S"] .headcount { font-size: 0.95rem; padding: 0.15rem 0.7rem; }
 #grocery[data-size="M"] .glist { columns: 2; }
 #grocery[data-size="M"] .glist li { font-size: 1.25rem; padding: 0.25rem 0; }
 #bins[data-size="S"] .bins-body { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
+#bins[data-size="S"] .bin { width: 3.6rem; }
 #bins[data-size="S"] .bin-dot { width: 2.2rem; height: 2.6rem; }
+#bins[data-size="S"] .bin-name { font-size: 0.75rem; }
 #bins[data-size="S"] .bin-text .big { font-size: 1.3rem; }
 #bins[data-size="S"] .bin-text .small { font-size: 1rem; }
 #chores[data-size="S"] .chores > div { grid-template-columns: 1fr auto; padding-right: 0; font-size: 1.1rem; }
 #chores[data-size="S"] .who .nm { display: none; }
-#notes[data-size="S"] .notes li { font-size: 1.1rem; }
-#notes[data-size="L"] .notes li { font-size: 1.7rem; padding: 0.5rem 0; }
 #count[data-size="S"] .cd-list div { font-size: 1.05rem; flex-direction: column; gap: 0; }
 #count[data-size="S"] .cd-list div:nth-child(n+3), #count[data-size="M"] .cd-list div:nth-child(n+5) { display: none; }
 #wash[data-size="S"] .wash-big { flex-direction: column; align-items: flex-start; gap: 0.4rem; }
@@ -309,7 +318,6 @@ body.has-wash #weather .wash { display: none; }
 .guide { display: none; border: 2px dashed var(--line); border-radius: var(--radius); z-index: 0; }
 body.editing .guide { display: block; }
 body.editing .panel.placed { outline: 2px dashed var(--blue); outline-offset: -2px; cursor: grab; user-select: none; }
-body.editing #clock { background: var(--surface-2); }
 .panel.dragging { z-index: 20; opacity: 0.85; cursor: grabbing; box-shadow: 0 1.2rem 3rem rgba(0,0,0,0.25); transition: none; }
 .ghost { display: none; z-index: 2; border-radius: var(--radius); border: 3px solid var(--blue); background: color-mix(in srgb, var(--blue) 12%, transparent); pointer-events: none; }
 .ghost.on { display: block; }
@@ -396,21 +404,26 @@ body.editing .edit-btn { display: none; }
 </head>
 <body>
 <div class="grid">
-  <section class="panel" id="clock">
-    <div class="time grad-text" id="time">--:--</div>
-    <div class="date" id="date"></div>
-    <div class="meta-row"><span class="sun" id="sun"></span><span class="cd" id="clist"></span></div>
+  <section class="panel" id="today">
+    <div class="t-clock">
+      <div class="time grad-text" id="time">--:--</div>
+      <div class="date" id="date"></div>
+      <div class="meta-row"><span class="sun" id="sun"></span><span class="cd" id="clist"></span></div>
+    </div>
+    <div class="t-dinner">
+      <div class="label"><span class="spark"></span>Tonight's dinner</div>
+      <div class="meal" id="meal">—</div>
+      <div class="cook-row"><span class="cook" id="cook"></span><span class="headcount" id="headcount"></span></div>
+    </div>
+    <div class="t-agenda">
+      <div class="label">Coming up</div>
+      <div class="agenda" id="agenda"></div>
+    </div>
   </section>
 
   <section class="panel" id="weather">
     <div class="label">West Melton weather</div>
     <div id="weather-body"><div class="empty">Loading weather…</div></div>
-  </section>
-
-  <section class="panel" id="dinner">
-    <div class="label"><span class="spark"></span>Tonight's dinner</div>
-    <div class="meal" id="meal">—</div>
-    <div class="cook-row"><span class="cook" id="cook"></span><span class="headcount" id="headcount"></span></div>
   </section>
 
   <section class="panel" id="week">
@@ -424,7 +437,7 @@ body.editing .edit-btn { display: none; }
   </section>
 
   <section class="panel tile-qr" id="qrgrocery">
-    <div class="qr" id="qr-grocery"><div class="code"></div><div><div class="t">Scan to edit</div><div class="s">Meals · groceries · notes</div></div></div>
+    <div class="qr" id="qr-grocery"><div class="code"></div><div><div class="t">Scan to edit</div><div class="s">Meals · groceries · calendar</div></div></div>
   </section>
 
   <section class="panel tile-qr" id="qrwifi">
@@ -437,11 +450,6 @@ body.editing .edit-btn { display: none; }
   <section class="panel" id="chores">
     <div class="label">Today's jobs <span class="count-badge" id="away-badge"></span></div>
     <div class="chores" id="chlist"><div class="empty">No jobs set for today</div></div>
-  </section>
-
-  <section class="panel" id="notes">
-    <div class="label">Notes</div>
-    <ul class="notes" id="nlist"></ul>
   </section>
 
   <section class="panel" id="count">
@@ -501,7 +509,7 @@ const CONFIG = {
 
   // Tab names in the Google Sheet (must match exactly).
   TABS: {
-    groceries: "Groceries", week: "Week", notes: "Notes", countdowns: "Countdowns",
+    groceries: "Groceries", week: "Week", calendar: "Calendar", countdowns: "Countdowns",
     dinner: "Dinner", settings: "Settings", away: "Away", availability: "Availability", meals: "Meal",
   },
 
@@ -518,7 +526,7 @@ const CONFIG = {
     // Selwyn: red rubbish and lime-green organics go weekly, yellow recycling fortnightly.
     { name: "Rubbish",   color: "var(--bin-red)",    anchor: "2026-10-28", everyDays: 7 },
     { name: "Recycling", color: "var(--bin-yellow)", anchor: "2026-10-28", everyDays: 14 },
-    { name: "Green",     color: "var(--bin-green)",  anchor: "2026-10-28", everyDays: 7 },
+    { name: "Organics",  color: "var(--bin-green)",  anchor: "2026-10-28", everyDays: 7 },
   ],
   BIN_REMIND_FROM_HOUR: 0, // bins go out the night before: remind all that day (e.g. 12 = from noon)
 
@@ -574,9 +582,14 @@ const DEMO = {
     { Day: "Sun", Cook: "C", "Set Table & Empty": "C", Wash: "M", "Clear & Dry": "J" },
   ],
   away: [],
-  notes: [
-    { Note: "Plumber Thursday 10am", Until: "" },
-    { Note: "Library books due Friday", Until: "" },
+  // Calendar: birthdays and events. A date without a year (d/m) repeats every year.
+  calendar: [
+    { Date: "13/11", Event: "Sam's birthday" },
+    { Date: "2026-11-21", Event: "School prizegiving" },
+    { Date: "28/11", Event: "Max & Jo's anniversary" },
+    { Date: "2026-12-05", Event: "Christmas party" },
+    { Date: "10/11", Event: "Nana's birthday" },
+    { Date: "2/1", Event: "Cam's birthday" },
   ],
   dinner: [
     { Person: "Sam", Mon: "TRUE", Tue: "TRUE", Wed: "TRUE", Thu: "TRUE", Fri: "TRUE", Sat: "TRUE", Sun: "TRUE" },
@@ -663,6 +676,46 @@ async function fetchTab(tab) {
 }
 
 /* ============================================================
+   Title Case: every bit of text on the screen (including what comes
+   from the Sheet) gets capitals at the start of words, leaving short
+   joining words ("and", "of", "to"…), units, am/pm and anything
+   already capitalised alone. Dialog and toast sentences are skipped.
+   ============================================================ */
+const SMALL_WORDS = new Set("a an the and or but nor for to of in on at by as vs via per with from".split(" "));
+function titleCase(text) {
+  let start = true;
+  return text.replace(/([·:—|!?(•]\s*)|([^\s·:—|!?(•]+)/g, (m, sep, word) => {
+    if (sep) { start = true; return m; }
+    const w = word.match(/^([a-z][a-z'’-]*)([,.;)]*)$/);
+    const out = w && !/^(am|pm)$/.test(w[1]) && (start || !SMALL_WORDS.has(w[1]))
+      ? w[1][0].toUpperCase() + w[1].slice(1) + w[2] : word;
+    start = false;
+    return out;
+  });
+}
+const NO_TITLE_CASE = "script, style, textarea, .dialog, .toast, #time";
+function titleCaseNode(node) {
+  let changed = false;
+  const walk = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+  for (let t = node.nodeType === 3 ? node : walk.nextNode(); t; t = walk.nextNode()) {
+    const el = t.parentElement;
+    if (!el || el.closest(NO_TITLE_CASE) || !/[a-z]/.test(t.data)) continue;
+    const next = titleCase(t.data);
+    if (next !== t.data) { t.data = next; changed = true; }
+  }
+  return changed;
+}
+new MutationObserver((muts) => {
+  let changed = false;
+  for (const m of muts) {
+    if (m.type === "characterData") changed = titleCaseNode(m.target) || changed;
+    else m.addedNodes.forEach((n) => { changed = titleCaseNode(n) || changed; });
+  }
+  if (changed) { fitPills(); fitTiles(); } // capitals are a touch wider
+}).observe(document.body, { childList: true, characterData: true, subtree: true });
+titleCaseNode(document.body);
+
+/* ============================================================
    Clock, night dimming, bins (update every 15s)
    ============================================================ */
 function renderClock() {
@@ -684,6 +737,29 @@ function nextCollection(bin, today) {
   return d;
 }
 
+// Hide optional bits, last first, until each tile's content fits. Screens differ (the Frame's
+// browser leaves less height than a laptop), so this runs after every render and on resize.
+const FIT = {
+  weather: [".day", ".wash", ".hour .p", ".alert"],
+  today:   [".ev.later"],
+  bins:    [".bin-text .small"],
+};
+function fitTiles() {
+  for (const [id, drops] of Object.entries(FIT)) {
+    const tile = $(id);
+    if (!tile || !tile.classList.contains("placed")) continue;
+    const box = id === "today" ? tile.querySelector(".t-agenda") : tile;
+    tile.querySelectorAll("[data-fit-hidden]").forEach((n) => { n.style.display = ""; delete n.dataset.fitHidden; });
+    const over = () => box.scrollHeight > box.clientHeight + 1;
+    for (const sel of drops) for (const n of [...tile.querySelectorAll(sel)].reverse()) {
+      if (!over()) break;
+      n.style.display = "none"; n.dataset.fitHidden = "1";
+    }
+  }
+}
+addEventListener("resize", () => fitTiles());
+if (document.fonts) document.fonts.ready.then(() => fitTiles());
+
 function renderBins() {
   const now = nzNow(), today = startOfDay(now);
   // If today's collection has passed (after midday), look from tomorrow.
@@ -692,22 +768,26 @@ function renderBins() {
   const soonest = Math.min(...upcoming.map((b) => b.next.getTime()));
   const due = upcoming.filter((b) => b.next.getTime() === soonest);
   const days = daysBetween(today, new Date(soonest));
-  const names = due.map((b) => b.name).join(" + ");
 
+  // Every bin is always shown; the ones not going out this time are faded and struck through.
   // The bins go out the evening before collection, so the day before is the reminder day.
+  const when = new Date(soonest);
+  const skipped = upcoming.filter((b) => !due.includes(b));
+  const skip = skipped.length ? ` · no ${skipped.map((b) => b.name.toLowerCase()).join(" or ")} this week` : "";
   let big, small, urgent = false;
-  if (days === 0) { big = `${names} — collected today`; small = "Bring the bins back in after collection"; }
+  if (days === 0) { big = "Collection today"; small = "Bring the bins back in after pickup"; }
   else if (days === 1) {
     urgent = now.getHours() >= CONFIG.BIN_REMIND_FROM_HOUR;
-    big = urgent ? "Put the bins out tonight" : `${names} — tomorrow`;
-    small = urgent ? `${names} · collected tomorrow` : `Put out tonight · ${fmtDay(new Date(soonest))}`;
-  } else { big = `${names} in ${days} days`; small = fmtDay(new Date(soonest)); }
+    big = urgent ? "Put the bins out tonight" : "Bins go out tonight";
+    small = "Collected tomorrow";
+  } else { big = `Bin day in ${days} days`; small = fmtDay(when) + skip; }
 
   $("bins").classList.toggle("urgent", urgent);
   $("bins-body").innerHTML = `
-    <div class="bin-dots">${due.map((b) => `<div class="bin-dot" style="background:${b.color}"></div>`).join("")}</div>
-    <div class="bin-text">${urgent ? `<div class="bin-alert">🔔 Reminder</div>` : `<div class="label" style="margin:0 0 .3rem">Bin day</div>`}
+    <div class="bin-dots">${upcoming.map((b) => `<div class="bin${due.includes(b) ? "" : " off"}"><div class="bin-dot" style="background:${b.color}"></div><div class="bin-name">${esc(b.name)}</div></div>`).join("")}</div>
+    <div class="bin-text">${urgent ? `<div class="bin-alert">🔔 Reminder</div>` : ""}
       <div class="big">${esc(big)}</div><div class="small">${esc(small)}</div></div>`;
+  fitTiles();
 }
 
 /* ============================================================
@@ -803,6 +883,7 @@ function renderWeather(w) {
 
   $("sun").textContent = `☀ ${hm(d.sunrise[0])}  ·  🌙 ${hm(d.sunset[0])}`;
   if (lastCountdowns) renderCountdowns(lastCountdowns); // sunrise text changes the row width
+  fitTiles();
 }
 
 /* Washing-line score: 0–10 for drying between 9am and 5pm.
@@ -1006,12 +1087,43 @@ function renderWeek(chart) {
   $("away-badge").textContent = awayNow.length ? `✈ ${awayNow.join(" & ")} away` : "";
 }
 
-function renderNotes(rows) {
+// Calendar tab: Date, Event, Yearly. Birthdays, anniversaries and one-off events. A date without
+// a year (e.g. 15/3) or Yearly = TRUE repeats every year. The Today tile shows what's on today,
+// then what's coming up in the next couple of months, nearest first.
+const CAL_DAYS_AHEAD = 60;
+let lastCalendar = [];
+function nextOccurrence(r, today) {
+  const dm = String(r.Date || "").trim().match(/^(\d{1,2})\/(\d{1,2})$/);
+  const yearly = dm || isDone(r.Yearly);
+  const base = dm ? new Date(today.getFullYear(), +dm[2] - 1, +dm[1]) : parseDate(r.Date);
+  if (!base) return null;
+  if (!yearly) return base;
+  const d = new Date(today.getFullYear(), base.getMonth(), base.getDate());
+  if (d < today) d.setFullYear(d.getFullYear() + 1);
+  return d;
+}
+const calIcon = (name) => (/birthday|b'?day/i.test(name) ? "🎂" : /anniversary/i.test(name) ? "💍" : "📅");
+function renderCalendar(rows) {
+  lastCalendar = rows.filter((r) => "Event" in r); // a missing Calendar tab comes back as another tab
   const today = startOfDay(nzNow());
-  const live = rows.filter((r) => r.Note && (!parseDate(r.Until) || parseDate(r.Until) >= today));
-  $("nlist").innerHTML = live.length
-    ? live.slice(0, 5).map((r) => `<li>${esc(r.Note)}</li>`).join("")
-    : `<li class="empty">No notes</li>`;
+  const items = lastCalendar
+    .map((r) => ({ name: r.Event, date: nextOccurrence(r, today) }))
+    .filter((e) => e.name && e.date && e.date >= today && daysBetween(today, e.date) <= CAL_DAYS_AHEAD)
+    .sort((a, b) => a.date - b.date);
+  const when = (d) => {
+    const n = daysBetween(today, d);
+    return n === 1 ? "Tomorrow" : n < 7 ? d.toLocaleDateString("en-NZ", { weekday: "long" }) : d.toLocaleDateString("en-NZ", { day: "numeric", month: "short" });
+  };
+  const row = (icon, name, right, cls) => `<div class="ev ${cls}"><span class="ic">${icon}</span><span class="nm">${esc(name)}</span><span class="tm">${esc(right)}</span></div>`;
+  const away = AWAY.filter((a) => today >= a.from && today <= a.to)
+    .map((a) => row("✈", `${a.name} away`, `back ${new Date(a.to.getTime() + 86400000).toLocaleDateString("en-NZ", { day: "numeric", month: "short" })}`, "on"));
+  const html = [
+    ...items.filter((e) => +e.date === +today).map((e) => row(calIcon(e.name), e.name, "Today!", "on now")),
+    ...away,
+    ...items.filter((e) => +e.date !== +today).map((e) => row(calIcon(e.name), e.name, when(e.date), "later")),
+  ];
+  $("agenda").innerHTML = html.length ? html.join("") : `<div class="empty">Nothing coming up</div>`;
+  fitTiles();
 }
 
 let lastCountdowns = null;
@@ -1024,17 +1136,18 @@ function renderCountdowns(rows) {
     .sort((a, b) => a.date - b.date)
     .slice(0, 6);
   const when = (d) => { const n = daysBetween(today, d); return n === 0 ? "today!" : n === 1 ? "tomorrow" : n + " days"; };
-  $("clist").innerHTML = list.slice(0, 3).map((r) => `<span class="pill">${esc(r.name)}<b>${when(r.date)}</b></span>`).join("");
+  $("clist").innerHTML = list.slice(0, 3).map((r) => `<span class="pill"><span class="pn">${esc(r.name)}</span><b>${when(r.date)}</b></span>`).join("");
   $("count-list").innerHTML = list.length
     ? list.map((r) => `<div><span>${esc(r.name)}</span><b>${when(r.date)}</b></div>`).join("")
     : `<div class="empty">Nothing coming up</div>`;
   fitPills();
 }
 
-// Drop countdown pills from the end until the row fits on one line.
+// Drop countdown pills from the end until the row fits; the last one shortens its name instead.
 function fitPills() {
   const row = document.querySelector(".meta-row"), pills = $("clist");
-  while (pills.children.length > 1 && row.scrollWidth > row.clientWidth + 1) pills.lastElementChild.remove();
+  const squeezed = () => row.scrollWidth > row.clientWidth + 1 || [...pills.querySelectorAll(".pn")].some((n) => n.scrollWidth > n.clientWidth + 1);
+  while (pills.children.length > 1 && squeezed()) pills.lastElementChild.remove();
 }
 
 // Dinner: one row per person, a ticked box per weekday means "home for dinner".
@@ -1086,7 +1199,7 @@ async function loadSheet() {
     renderSettings(DEMO.settings); // first: it sets PEOPLE for the week chart
     renderAway(DEMO.away); renderAvailability([]);
     renderGroceries(DEMO.groceries); renderMeals(DEMO.meals); renderWeek(DEMO.week);
-    renderNotes(DEMO.notes); renderCountdowns(DEMO.countdowns); renderHeadcount(DEMO.dinner);
+    renderCalendar(DEMO.calendar); renderCountdowns(DEMO.countdowns); renderHeadcount(DEMO.dinner);
     setStatus("sheet", "demo");
     return;
   }
@@ -1096,9 +1209,9 @@ async function loadSheet() {
     [T.away, renderAway],         // these two before the week chart, which shares out away people's jobs
     [T.availability, renderAvailability],
     [T.groceries, renderGroceries], [T.meals, renderMeals], [T.week, renderWeek],
-    [T.notes, renderNotes], [T.countdowns, renderCountdowns], [T.dinner, renderHeadcount],
+    [T.calendar, renderCalendar], [T.countdowns, renderCountdowns], [T.dinner, renderHeadcount],
   ];
-  const results = await Promise.allSettled(jobs.map(([tab]) => [T.away, T.availability, T.meals].includes(tab) ? fetchTab(tab).catch(() => []) : fetchTab(tab)));
+  const results = await Promise.allSettled(jobs.map(([tab]) => [T.away, T.availability, T.meals, T.calendar].includes(tab) ? fetchTab(tab).catch(() => []) : fetchTab(tab)));
   results.forEach((r, i) => { if (r.status === "fulfilled") jobs[i][1](r.value); });
   setStatus("sheet", results.every((r) => r.status === "fulfilled"));
 }
@@ -1114,8 +1227,7 @@ const COLS = 6, ROWS = 4;
 const SIZES = { S: [1, 1], M: [2, 1], L: [2, 2] };
 // min = the smallest footprint [width, height] the tile's content still fits in.
 const TILES = {
-  clock:     { name: "Clock & date",        min: [1, 1] },
-  dinner:    { name: "Tonight's dinner",    min: [1, 1] },
+  today:     { name: "Today (clock, dinner, calendar)", min: [4, 1] },
   weather:   { name: "Weather",             min: [2, 1] },
   week:      { name: "This week's dinners", min: [2, 2] },
   grocery:   { name: "Grocery list",        min: [2, 1] },
@@ -1123,11 +1235,12 @@ const TILES = {
   qrwifi:    { name: "Guest Wi-Fi QR",      min: [1, 1] },
   bins:      { name: "Bin day",             min: [1, 1] },
   chores:    { name: "Today's jobs",        min: [1, 1] },
-  notes:     { name: "Notes",               min: [1, 1] },
   count:     { name: "Coming up",           min: [1, 1] },
   wash:      { name: "Washing line",        min: [1, 1] },
 };
-const DEFAULT_LAYOUT = "clock:M:0:0 dinner:M:2:0 qrgrocery:S:4:0 qrwifi:S:5:0 weather:L:0:1 week:L:2:1 grocery:L:4:1 bins:M:0:3 chores:M:2:3 notes:M:4:3";
+const DEFAULT_LAYOUT = "today:5x1:0:0 qrgrocery:S:5:0 weather:L:0:1 chores:M:2:1 week:L:2:2 grocery:2x3:4:1 bins:M:0:3";
+// Layouts saved before the clock and dinner tiles were merged into "today" fall back to the default.
+const upgradeLayout = (code) => (/(^|\s)(clock|dinner|notes):/.test(code || "") ? "" : code);
 const DRAFT_KEY = "kitchen-dashboard-layout";
 
 const box = (t) => ({ x: t.x, y: t.y, w: t.w, h: t.h });
@@ -1162,6 +1275,7 @@ const store = {
 };
 
 let sheetLayout = "";          // what the Sheet says (what the TV shows)
+if (!upgradeLayout(store.get())) store.set("");
 let layout = parseLayout(store.get() || DEFAULT_LAYOUT);
 let editing = false;
 
@@ -1170,6 +1284,7 @@ function placeEl(t) {
   el.style.gridColumn = `${t.x + 1} / span ${t.w}`;
   el.style.gridRow = `${t.y + 1} / span ${t.h}`;
   el.dataset.size = sizeClass(t);
+  el.dataset.w = t.w;
 }
 
 function applyLayout() {
@@ -1187,12 +1302,13 @@ function applyLayout() {
   document.body.classList.toggle("has-wash", layout.some((t) => t.id === "wash"));
   document.body.classList.toggle("has-count", layout.some((t) => t.id === "count"));
   if (lastCountdowns) renderCountdowns(lastCountdowns); // pills depend on the clock tile's width
+  fitTiles();
   updateDraftNote();
 }
 
 // Called whenever the Sheet's Settings tab loads.
 function setSheetLayout(code) {
-  sheetLayout = layoutCode(parseLayout(code || DEFAULT_LAYOUT));
+  sheetLayout = layoutCode(parseLayout(upgradeLayout(code) || DEFAULT_LAYOUT));
   const draft = store.get();
   if (draft && draft === sheetLayout) store.set(""); // the Sheet has caught up with this computer
   if (!editing) { layout = parseLayout(store.get() || sheetLayout); applyLayout(); }
