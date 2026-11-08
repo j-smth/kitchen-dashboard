@@ -783,15 +783,13 @@ function renderBins() {
   // Every bin is always shown; the ones not going out this time are faded and struck through.
   // The bins go out the evening before collection, so the day before is the reminder day.
   const when = new Date(soonest);
-  const skipped = upcoming.filter((b) => !due.includes(b));
-  const skip = skipped.length ? ` · no ${skipped.map((b) => b.name.toLowerCase()).join(" or ")} this week` : "";
   let big, small, urgent = false;
   if (days === 0) { big = "Collection today"; small = "Bring the bins back in after pickup"; }
   else if (days === 1) {
     urgent = now.getHours() >= CONFIG.BIN_REMIND_FROM_HOUR;
     big = urgent ? "Put the bins out tonight" : "Bins go out tonight";
     small = "Collected tomorrow";
-  } else { big = `Bin day in ${days}\u00a0days`; small = fmtDay(when) + skip; } // "3 Days" stays together when it wraps
+  } else { big = `Bin day in ${days}\u00a0days`; small = fmtDay(when); } // "3 Days" stays together when it wraps
 
   $("bins").classList.toggle("urgent", urgent);
   $("bins-body").innerHTML = `
