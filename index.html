@@ -12,7 +12,7 @@
    KITCHEN DASHBOARD — single self-contained file.
    Edit the CONFIG block in the <script> below; nothing else is
    required. Designed for a 1920×1080 TV but scales to any size.
-   Theme: Gemini (light by day, Gemini dark from NIGHT_START).
+   Theme: Gemini (light by day, Gemini dark from sunset to sunrise).
    ============================================================ */
 :root {
   --bg: #ffffff;
@@ -37,15 +37,16 @@
   --radius: 1.6rem;
   --who-col: 8.6rem; /* shared name column, so avatars line up in both panels */
 }
-/* After dark the white screen is too bright for a kitchen — swap to Gemini dark. */
-body.night {
+/* After sunset the white screen is too bright for a kitchen — swap to Gemini dark. */
+body.dark {
   --bg: #131314; --surface: #1e1f20; --surface-2: #282a2c; --ink: #e3e3e3; --ink-2: #c4c7c5; --muted: #8e918f;
   --line: #333537;
   --blue: #a8c7fa; --blue-soft: #1f3760; --purple: #d0bcff; --purple-soft: #3a2a5c;
   --pink: #ffb1c1; --pink-soft: #4a2530; --amber: #ffd27a; --amber-soft: #3d2f12;
   --glow-a: rgba(66, 133, 244, 0.08); --glow-b: rgba(155, 114, 203, 0.07); --glow-c: rgba(217, 101, 112, 0.06);
-  filter: brightness(0.85);
 }
+/* Late at night (NIGHT_START–NIGHT_END) dim it a little further. */
+body.night { filter: brightness(0.85); }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 /* 1rem scales with the screen so the layout looks identical on any TV */
 html { font-size: min(1vw, 1.72vh); }
@@ -157,7 +158,7 @@ body {
 .meal { font-size: 2.7rem; font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; }
 .cook-row { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 0.9rem; margin-top: 0.5rem; }
 .cook { font-size: 1.45rem; color: rgba(255, 255, 255, 0.9); }
-body.night .t-dinner { filter: saturate(0.8) brightness(0.8); }
+body.dark .t-dinner { filter: saturate(0.85) brightness(0.85); }
 
 /* Week roster */
 #week { }
@@ -530,7 +531,8 @@ const CONFIG = {
   ],
   BIN_REMIND_FROM_HOUR: 0, // bins go out the night before: remind all that day (e.g. 12 = from noon)
 
-  // Dim the screen between these hours (24h). Set both to 0 to disable.
+  // Dark mode runs from sunset to sunrise (from the weather feed). On top of that, dim the
+  // screen a little further between these hours (24h). Set both to 0 to disable the dimming.
   NIGHT_START: 22,
   NIGHT_END: 6,
 
@@ -726,7 +728,15 @@ function renderClock() {
   const { NIGHT_START: s, NIGHT_END: e } = CONFIG;
   const night = s !== e && (s > e ? (h >= s || h < e) : (h >= s && h < e));
   document.body.classList.toggle("night", night);
+  // Dark from sunset to sunrise. Until the weather has loaded, guess 7pm–7am.
+  const mins = h * 60 + n.getMinutes();
+  const [rise, set] = SUN || [7 * 60, 19 * 60];
+  document.body.classList.toggle("dark", THEME === "dark" || (THEME !== "light" && (mins >= set || mins < rise || night)));
 }
+// Today's sunrise and sunset in minutes after midnight, set by the weather feed.
+let SUN = null;
+// ?theme=dark or ?theme=light forces a theme, e.g. to preview it during the day.
+const THEME = new URLSearchParams(location.search).get("theme");
 
 function nextCollection(bin, today) {
   const anchor = parseDate(bin.anchor);
@@ -883,6 +893,9 @@ function renderWeather(w) {
     }).join("")}</div>`;
 
   $("sun").textContent = `☀ ${hm(d.sunrise[0])}  ·  🌙 ${hm(d.sunset[0])}`;
+  const toMins = (iso) => isoHour(iso) * 60 + +iso.slice(14, 16);
+  SUN = [toMins(d.sunrise[0]), toMins(d.sunset[0])];
+  renderClock();
   if (lastCountdowns) renderCountdowns(lastCountdowns); // sunrise text changes the row width
   fitTiles();
 }
