@@ -1103,7 +1103,7 @@ function renderWeek(chart) {
 
 // Calendar tab: Date, Event, Yearly. Birthdays, anniversaries and one-off events. A date without
 // a year (e.g. 15/3) or Yearly = TRUE repeats every year. The Today tile shows what's on today,
-// then what's coming up in the next couple of months, nearest first.
+// then what's coming up in the next couple of months (including trips on the Away tab), nearest first.
 const CAL_DAYS_AHEAD = 60;
 let lastCalendar = [];
 function nextOccurrence(r, today) {
@@ -1121,7 +1121,9 @@ function renderCalendar(rows) {
   lastCalendar = rows.filter((r) => "Event" in r); // a missing Calendar tab comes back as another tab
   const today = startOfDay(nzNow());
   const items = lastCalendar
-    .map((r) => ({ name: r.Event, date: nextOccurrence(r, today) }))
+    .map((r) => ({ name: r.Event, date: nextOccurrence(r, today), icon: calIcon(r.Event) }))
+    // trips that haven't started yet sit in the list by their leaving date
+    .concat(AWAY.filter((a) => a.from > today).map((a) => ({ name: `${a.name} away`, date: a.from, icon: "✈" })))
     .filter((e) => e.name && e.date && e.date >= today && daysBetween(today, e.date) <= CAL_DAYS_AHEAD)
     .sort((a, b) => a.date - b.date);
   const when = (d) => {
@@ -1132,9 +1134,9 @@ function renderCalendar(rows) {
   const away = AWAY.filter((a) => today >= a.from && today <= a.to)
     .map((a) => row("✈", `${a.name} away`, `back ${new Date(a.to.getTime() + 86400000).toLocaleDateString("en-NZ", { day: "numeric", month: "short" })}`, "on"));
   const html = [
-    ...items.filter((e) => +e.date === +today).map((e) => row(calIcon(e.name), e.name, "Today!", "on now")),
+    ...items.filter((e) => +e.date === +today).map((e) => row(e.icon, e.name, "Today!", "on now")),
     ...away,
-    ...items.filter((e) => +e.date !== +today).map((e) => row(calIcon(e.name), e.name, when(e.date), "later")),
+    ...items.filter((e) => +e.date !== +today).map((e) => row(e.icon, e.name, when(e.date), "later")),
   ];
   $("agenda").innerHTML = html.length ? html.join("") : `<div class="empty">Nothing coming up</div>`;
   fitTiles();
